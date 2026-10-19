@@ -16,6 +16,7 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
     fat: text(food?.fat),
     calories: text(food?.calories),
     serving: text(food?.servingGrams),
+    basis: '100', // grams the entered macros refer to
   }))
   const [confirmDelete, setConfirmDelete] = useState(false)
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -28,14 +29,18 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
   const calories = form.calories.trim() ? num(form.calories) : estimated
 
   // No upper limits: any non-negative numbers are accepted.
-  const canSave = form.name.trim() && Math.min(calories, protein, carbs, fat) >= 0
+  const basis = form.basis.trim() ? num(form.basis) : 100
+  const canSave = form.name.trim() && basis > 0 && Math.min(calories, protein, carbs, fat) >= 0
 
   const save = () => {
     const serving = num(form.serving)
+    const k = 100 / basis
     onSave({
       ...food, // keeps extra fields, e.g. batch info from the Meal Divider
       id: food?.id ?? crypto.randomUUID(),
-      name: form.name.trim(), calories, protein, carbs, fat, custom: true,
+      name: form.name.trim(), custom: true,
+      // stored per 100 g, whatever amount the values were entered for
+      calories: calories * k, protein: protein * k, carbs: carbs * k, fat: fat * k,
       servingGrams: serving > 0 ? serving : undefined, // default grams when logging
     })
     onClose()
@@ -46,9 +51,10 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
       <Card className="space-y-3.5">
         <SectionTitle>{editing ? t(food.name) : t('Create a custom meal')}</SectionTitle>
         <p className={`text-[13px] ${muted}`}>
-          {t('Enter the values per 100 g. When you log it later you only type the grams.')}
+          {t('Enter the values for the amount below (100 g by default). When you log it later you only type the grams.')}
         </p>
         <TextInput value={form.name} onChange={set('name')} placeholder={t('Name (e.g. Chicken Rice Bowl)')} />
+        <FieldRow label={t('Amount')} unit={t('g')} placeholder="100" value={form.basis} onChange={set('basis')} />
         <FieldRow label={t('Protein')} unit={t('g')} placeholder="0" value={form.protein} onChange={set('protein')} />
         <FieldRow label={t('Carbs')} unit={t('g')} placeholder="0" value={form.carbs} onChange={set('carbs')} />
         <FieldRow label={t('Fats')} unit={t('g')} placeholder="0" value={form.fat} onChange={set('fat')} />

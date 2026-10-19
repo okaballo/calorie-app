@@ -183,8 +183,9 @@ const AR = {
   // ---- Custom item ----
   'Edit Custom Item': 'تعديل عنصر مخصّص',
   'Custom Meal': 'وجبة مخصّصة',
-  'Enter the values per 100 g. When you log it later you only type the grams.':
-    'أدخل القيم لكل 100 غ. عند تسجيله لاحقاً تكتب الغرامات فقط.',
+  'Enter the values for the amount below (100 g by default). When you log it later you only type the grams.':
+    'أدخل القيم للكمية أدناه (100 غ افتراضياً). عند تسجيله لاحقاً تكتب الغرامات فقط.',
+  'Amount': 'الكمية',
   'Name (e.g. Chicken Rice Bowl)': 'الاسم (مثلاً: صحن دجاج وأرز)',
   'Leave calories empty to calculate them from the macros.': 'اترك السعرات فارغة لحسابها من المغذيات.',
   'Portion size': 'حجم الحصة',
