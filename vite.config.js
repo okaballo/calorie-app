@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -7,4 +8,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: '/calorie-app/',
   plugins: [react(), tailwindcss()],
+  // "@/..." = "src/...", the import style shadcn components use.
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
 })

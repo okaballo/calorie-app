@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512" role="img" aria-label="KiBase app icon: three stacked upward chevrons growing brighter toward the top">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A0E33"/>
+      <stop offset="1" stop-color="#050407"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-80%" width="180%" height="260%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <!-- Tile -->
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+
+  <!-- Chevrons: dark to bright, bottom to top -->
+  <polyline points="150,410 256,316 362,410" fill="none" stroke="#4B2A8A" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="150,316 256,222 362,316" fill="none" stroke="#7851A9" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Top chevron with glow -->
+  <polyline points="150,222 256,128 362,222" fill="none" stroke="#B58CFF" stroke-width="52" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <polyline points="150,222 256,128 362,222" fill="none" stroke="#EDE2FF" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Spark -->
+  <circle cx="256" cy="74" r="10" fill="#EDE2FF"/>
+</svg>

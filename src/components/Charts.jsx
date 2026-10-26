@@ -1,5 +1,6 @@
 // Hand-drawn SVG charts: no chart library, so nothing extra to download or cache.
 // dir="ltr" keeps the axes and text anchors in place in the Arabic layout.
+import { useId } from 'react'
 import { fmt0, fmt1 } from '../lib/calc.js'
 import { t, locale } from '../lib/i18n.js'
 
@@ -15,11 +16,11 @@ const TOP = 14
  * few x-axis labels are drawn so they never overlap.
  *
  * Pass `onSelect` to make bars that have a `key` tappable (the whole column,
- * so empty days can be picked too). The `selected` key is highlighted and the
+ * so empty days can be picked too); it gets the tapped key. The `selected` key is highlighted and the
  * other bars are dimmed. Bars with `cheat: true` use the red/blue cheat day gradient.
  */
 export function BarChart({ bars, goal, label = 'Calories chart', selected = null, onSelect }) {
-  const max = Math.max(goal, ...bars.map((d) => d.value), 1) * 1.15
+  const max = Math.max(goal, ...bars.map((d) => (d.cheat ? 0 : d.value)), 1) * 1
   const plotH = H - TOP - BOTTOM
   const y = (v) => TOP + plotH * (1 - v / max)
   const slot = (W - LEFT) / bars.length
@@ -55,20 +56,27 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
         </g>
       ))}
 
+      {/* Two passes over the bars. The glow filter sits on ONE group around
+          all bars. Put on each bar, it allocated a full-chart offscreen buffer
+          per bar (up to 31) and re-ran them all on every frame of the dim
+          fade; two quick taps (overlapping fades) exhausted iOS GPU memory and
+          WebKit dropped the page layer, so the screen went black. Dimming is
+          also instant now, so nothing is re-filtered frame by frame. */}
       {bars.map((d, i) => {
-        const x = LEFT + slot * i + (slot - barW) / 2
-        const h = Math.max(y(0) - y(d.value), 0)
         const isSelected = selected !== null && d.key === selected
         const dimmed = selected !== null && !isSelected
         return (
-          <g key={i} opacity={dimmed ? 0.4 : 1} style={{ transition: 'opacity .2s' }}>
+          <g key={i} opacity={dimmed ? 0.4 : 1}>
             {isSelected && (
               <rect x={LEFT + slot * i + 1} y={TOP - 4} width={slot - 2} height={H - TOP - 4} rx={6}
                 fill="currentColor" fillOpacity=".07" />
             )}
-            {h > 0 && <rect x={x} y={y(d.value)} width={barW} height={h} rx={radius} fill={d.cheat ? 'url(#bar-cheat)' : 'url(#bar)'} filter="url(#bar-glow)" />}
+            {d.cheat && (
+              <rect x={LEFT + slot * i} y={TOP - 4} width={slot - 1} height={y(0) - TOP + 4}
+                fill="url(#bar-cheat)" fillOpacity=".16" />
+            )}
             {(i % labelEvery === 0 || isSelected) && (
-              <text x={x + barW / 2} y={H - 7} textAnchor="middle" fontSize="10" fill="currentColor"
+              <text x={LEFT + slot * i + slot / 2} y={H - 7} textAnchor="middle" fontSize="10" fill="currentColor"
                 fillOpacity={isSelected ? 1 : 0.6} fontWeight={isSelected ? 700 : 400}>
                 {d.label}
               </text>
@@ -76,6 +84,17 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
           </g>
         )
       })}
+      <g filter="url(#bar-glow)">
+        {bars.map((d, i) => {
+          const h = Math.max(y(0) - y(d.value), 0)
+          if (d.cheat || h <= 0) return null
+          const dimmed = selected !== null && d.key !== selected
+          return (
+            <rect key={i} x={LEFT + slot * i + (slot - barW) / 2} y={y(d.value)} width={barW} height={h}
+              rx={radius} fill="url(#bar)" fillOpacity={dimmed ? 0.4 : 1} />
+          )
+        })}
+      </g>
 
       {goal > 0 && (
         <g>
@@ -94,7 +113,7 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
           role="button" tabIndex={0} style={{ cursor: 'pointer', outline: 'none' }}
           aria-label={`${d.label}: ${fmt0(d.value)} ${t('kcal')}${d.cheat ? `, ${t('Cheat Day')}` : ''}`}
           aria-pressed={d.key === selected}
-          onClick={() => onSelect(d.key === selected ? null : d.key)}
+          onClick={() => onSelect(d.key)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(d.key) } }}
         />
       ))}
@@ -103,10 +122,12 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
 }
 
 /** Weight trend: line with a soft fill. `points` are { date: 'YYYY-MM-DD', value }, oldest first. */
-export function LineChart({ points }) {
+export function LineChart({ points, pad = 1.5, format = fmt1, label: ariaLabel = t('Weight trend') }) {
+  // Unique ids: several charts can be mounted at once (every tab stays mounted).
+  const uid = useId().replace(/:/g, '')
   const values = points.map((p) => p.value)
-  const lo = Math.min(...values) - 1.5
-  const hi = Math.max(...values) + 1.5
+  const lo = Math.min(...values) - pad
+  const hi = Math.max(...values) + pad
   const times = points.map((p) => new Date(p.date).getTime())
   const t0 = times[0]
   const span = times[times.length - 1] - t0
@@ -122,15 +143,15 @@ export function LineChart({ points }) {
   const label = (date) => new Date(date).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 
   return (
-    <svg dir="ltr" viewBox={`0 0 ${W} ${H}`} className="w-full text-zinc-900 dark:text-white" role="img" aria-label={t('Weight trend')}>
+    <svg dir="ltr" viewBox={`0 0 ${W} ${H}`} className="w-full text-zinc-900 dark:text-white" role="img" aria-label={ariaLabel}>
       <defs>
-        <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`area-${uid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#7851a9" stopOpacity=".45" />
           <stop offset="1" stopColor="#7851a9" stopOpacity="0" />
         </linearGradient>
         {/* Soft neon halo behind the trend line. userSpaceOnUse keeps it
             working even when the line is perfectly flat. */}
-        <filter id="line-glow" filterUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
+        <filter id={`line-glow-${uid}`} filterUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
           <feGaussianBlur stdDeviation="4" result="blur" />
           <feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
           <feMerge><feMergeNode in="halo" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -143,14 +164,14 @@ export function LineChart({ points }) {
           <g key={f}>
             <line x1={LEFT} x2={W} y1={y(v)} y2={y(v)} stroke="currentColor" strokeOpacity=".08" />
             <text x={LEFT - 6} y={y(v) + 3} textAnchor="end" fontSize="9" fill="currentColor" fillOpacity=".6">
-              {fmt1(v)}
+              {format(v)}
             </text>
           </g>
         )
       })}
 
-      <polygon points={area} fill="url(#area)" />
-      <g filter="url(#line-glow)">
+      <polygon points={area} fill={`url(#area-${uid})`} />
+      <g filter={`url(#line-glow-${uid})`}>
         <polyline points={line} fill="none" stroke="#b58ff2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         {coords.map(([px, py], i) => <circle key={i} cx={px} cy={py} r="3.5" fill="#b58ff2" />)}
       </g>

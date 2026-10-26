@@ -1,8 +1,10 @@
 // Shared building blocks. Every colour is given for light mode first and for
 // dark mode with a `dark:` variant, so the whole app follows the theme toggle.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, useDragControls, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
+import {
+  animate, motion, useDragControls, useMotionValue, useReducedMotion, useTransform, useVelocity,
+} from 'framer-motion'
 import { fmt0, fmt1 } from '../lib/calc.js'
 import { t, isRTL } from '../lib/i18n.js'
 
@@ -17,12 +19,47 @@ export const fieldBg = 'bg-zinc-100 dark:bg-field'
 export const divider = 'divide-black/5 dark:divide-white/10'
 const placeholder = 'placeholder:text-zinc-400 dark:placeholder:text-white/30'
 
+/** Liquid Glass edge: the rim highlights of LiquidButton
+ *  (components/ui/liquid-glass-button.tsx), for any glass surface. Put it on
+ *  an absolute inset layer so the surface keeps its own drop shadow. */
+export const glassRim =
+  'shadow-[inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] ' +
+  'dark:shadow-[inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)]'
+
+/**
+ * Backdrop for a Liquid Glass surface: a plain blur layer (works everywhere)
+ * and, above it, a layer that warps what is behind it with an SVG
+ * displacement map (Chromium only; Safari and Firefox ignore it and keep the
+ * blur). They are SIBLINGS on purpose: an element with backdrop-filter becomes
+ * a backdrop root, so a filter nested inside another one would see nothing.
+ * The parent must not have a backdrop-filter of its own.
+ */
+export const GlassBackdrop = ({ id = 'nav-glass', scale = 46, freq = '0.012 0.035', className = 'rounded-full' }) => (
+  <>
+    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 -z-20 backdrop-blur-md backdrop-saturate-150 ${className}`} />
+    <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true">
+      <filter id={id} x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency={freq} numOctaves="2" seed="3" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="3" result="softNoise" />
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale={scale} xChannelSelector="R" yChannelSelector="B" result="warped" />
+        <feGaussianBlur in="warped" stdDeviation="1.2" />
+      </filter>
+    </svg>
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-0 -z-10 ${className}`}
+      style={{ backdropFilter: `url(#${id})` }}
+    />
+  </>
+)
+
 // ---- Layout ----------------------------------------------------------------
 
-/** Rounded card. Backgrounds sit at 95% opacity so they blend into the page. */
+/** Rounded card: a hairline border defines the edge instead of a lighter
+ *  fill. Dark mode is a deep graphite gradient sitting on OLED black. */
 export const Card = ({ children, className = '' }) => (
   <section
-    className={`rounded-3xl border border-black/5 bg-white/95 p-[18px] shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-colors duration-300 dark:border-white/5 dark:bg-card/95 dark:shadow-none ${className}`}
+    className={`rounded-[28px] border-[0.5px] border-black/7 bg-white p-[18px] shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_-16px_rgba(0,0,0,0.12)] transition-colors duration-300 dark:border-white/9 dark:bg-card dark:from-[#141418] dark:to-card dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${className}`}
   >
     {children}
   </section>
@@ -42,7 +79,7 @@ export const PageTitle = ({ children, action }) => (
 export const PrimaryButton = ({ children, className = '', ...props }) => (
   <button
     {...props}
-    className={`w-full rounded-2xl bg-royal py-3.5 font-semibold text-white transition active:opacity-80 disabled:opacity-35 ${className}`}
+    className={`w-full rounded-2xl bg-linear-to-b from-[#8a63bd] to-royal py-3.5 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_-10px_rgba(120,81,169,0.7)] transition active:scale-[0.98] active:opacity-90 disabled:opacity-35 disabled:shadow-none ${className}`}
   >
     {children}
   </button>
@@ -84,6 +121,149 @@ export const Segmented = ({ options, value, onChange }) => (
     ))}
   </div>
 )
+
+export const SunIcon = ({ className = 'h-6 w-6' }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+    <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"
+      fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+)
+
+export const MoonIcon = ({ className = 'h-6 w-6' }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" />
+  </svg>
+)
+
+// GlassSwitch geometry (px): track width / height, knob width / height, gap.
+const SW = { T: 84, H: 28, KW: 36, KH: 34, P: 3 }
+const SW_TRAVEL = SW.T - SW.KW - 2 * SW.P
+const SW_SPRING = { type: 'spring', stiffness: 380, damping: 28, mass: 1 }
+
+/**
+ * Two-way switch with a Liquid Glass knob. The knob is slightly taller than
+ * the track and shows the icon of the active side; the other side's icon
+ * stays on the track, faint. Tap anywhere, or drag the knob.
+ *   press     the knob swells and goes clearer
+ *   move      it springs across, stretching with its speed; icons cross-fade (and turn) as it passes the middle
+ *   release   it settles with a small bounce
+ *
+ * `left` / `right`: { icon }, `value`: 0 (knob left) or 1 (knob right),
+ * `onChange(0 | 1)`. The switch is always left-to-right, even in Arabic, so
+ * "Light | Dark" keeps its physical sides.
+ */
+export function GlassSwitch({ value, onChange, left, right, label }) {
+  const reduce = useReducedMotion()
+  const pos = useMotionValue(value)    // 0 knob left .. 1 knob right
+  const press = useMotionValue(0)
+  const drag = useRef(null)            // { x0, p0, moved } while a finger is down
+
+  // Follow the value (also when the language / theme is changed elsewhere).
+  useEffect(() => {
+    if (drag.current) return
+    if (reduce) pos.set(value)
+    else animate(pos, value, SW_SPRING)
+  }, [value, pos, reduce])
+
+  const lift = (to) => (reduce ? press.set(to) : animate(press, to, { type: 'spring', stiffness: 500, damping: 30 }))
+
+  const x = useTransform(pos, (p) => SW.P + p * SW_TRAVEL)
+  const velocity = useVelocity(pos)
+  const stretch = useTransform(velocity, (v) => Math.min(Math.abs(v) * SW_TRAVEL / 3000, 0.28))
+  const scaleX = useTransform([press, stretch], ([p, s]) => 1 + 0.1 * p + s)
+  const scaleY = useTransform([press, stretch], ([p, s]) => 1 + 0.08 * p - 0.35 * s)
+  const knobTint = useTransform(press, [0, 1], [1, 0.55])   // knob fill gets clearer while held
+
+  const fadeOut = useTransform(pos, [0, 0.5], [1, 0])        // things for the left state
+  const fadeIn = useTransform(pos, [0.5, 1], [0, 1])         // things for the right state
+  const dimIn = useTransform(fadeIn, (v) => v * 0.35)        // the idle side's icon stays faint
+  const dimOut = useTransform(fadeOut, (v) => v * 0.35)
+  const turnOut = useTransform(pos, [0, 1], [0, 90])
+  const turnIn = useTransform(pos, [0, 1], [-90, 0])
+  const growOut = useTransform(pos, [0, 0.5], [1, 0.4])
+  const growIn = useTransform(pos, [0.5, 1], [0.4, 1])
+
+  const onPointerDown = (e) => {
+    if (e.button > 0) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { x0: e.clientX, p0: pos.get(), moved: false }
+    lift(1)
+  }
+  const onPointerMove = (e) => {
+    const d = drag.current
+    if (!d) return
+    const dx = e.clientX - d.x0
+    if (!d.moved && Math.abs(dx) < 5) return
+    d.moved = true
+    pos.set(Math.min(Math.max(d.p0 + dx / SW_TRAVEL, 0), 1))
+  }
+  const finish = (target) => {
+    drag.current = null
+    lift(0)
+    if (target !== value) onChange(target)
+    else if (reduce) pos.set(value)
+    else animate(pos, value, SW_SPRING)
+  }
+  const onPointerUp = () => {
+    const d = drag.current
+    if (d) finish(d.moved ? (pos.get() > 0.5 ? 1 : 0) : 1 - value)
+  }
+  const onPointerCancel = () => { if (drag.current) finish(value) }
+
+  const slot = 'pointer-events-none absolute top-0 flex h-full items-center justify-center text-[13px] font-bold text-zinc-900 dark:text-white'
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      dir="ltr"
+      aria-checked={value === 1}
+      aria-label={label}
+      onClick={(e) => { if (e.detail === 0) onChange(1 - value) }}   // keyboard only; pointers are handled below
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      className="relative isolate my-1 shrink-0 touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-royal/60"
+      style={{ width: SW.T, height: SW.H }}
+      data-no-swipe
+    >
+      {/* Track: a recessed pill. */}
+      <div className="absolute inset-0 rounded-full bg-black/6 shadow-[inset_0_2px_5px_rgba(0,0,0,0.12),inset_0_-1px_0_rgba(255,255,255,0.6)] dark:bg-black/55 dark:shadow-[inset_0_2px_6px_rgba(0,0,0,0.7),inset_0_-1px_0_rgba(255,255,255,0.06)]" />
+
+      {/* The side the knob has left: its icon, faint. */}
+      <motion.span className={slot} style={{ opacity: dimIn, left: SW.P, width: SW.KW }}>
+        {left.icon}
+      </motion.span>
+      <motion.span className={slot} style={{ opacity: dimOut, left: SW.T - SW.P - SW.KW, width: SW.KW }}>
+        {right.icon}
+      </motion.span>
+
+      {/* Glass knob. */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 isolate rounded-[14px]"
+        style={{ x, scaleX, scaleY, width: SW.KW, height: SW.KH, top: (SW.H - SW.KH) / 2 }}
+      >
+        <motion.div
+          className="absolute inset-0 -z-20 rounded-[14px] bg-white/70 shadow-[0_4px_9px_-3px_rgba(0,0,0,0.3)] backdrop-blur-[3px] dark:bg-white/12 dark:shadow-[0_4px_9px_-2px_rgba(0,0,0,0.8)]"
+          style={{ opacity: knobTint }}
+        />
+        <div className={`absolute inset-0 rounded-[14px] ${glassRim}`} />
+        <div className="absolute inset-0 rounded-[14px] shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.4),inset_-2px_0_3px_-1px_rgba(237,133,217,0.35)]" />
+        <div className="absolute inset-0 flex items-center justify-center text-zinc-900 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)] dark:text-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.65)]">
+          <motion.span className="absolute flex items-center justify-center text-[13px] font-bold" style={{ opacity: fadeOut, rotate: turnOut, scale: growOut }}>
+            {left.icon}
+          </motion.span>
+          <motion.span className="absolute flex items-center justify-center text-[13px] font-bold" style={{ opacity: fadeIn, rotate: turnIn, scale: growIn }}>
+            {right.icon}
+          </motion.span>
+        </div>
+      </motion.div>
+    </button>
+  )
+}
 
 /** Round "+" used to add an item to a meal. */
 export const AddButton = ({ onClick, label }) => (
@@ -133,6 +313,13 @@ export const PencilIcon = ({ className = 'h-[18px] w-[18px]' }) => (
   </svg>
 )
 
+export const TrashIcon = ({ className = 'h-[18px] w-[18px]' }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.8 12.2a1 1 0 0 0 1 .8h7.4a1 1 0 0 0 1-.8L17.5 7M10 11v5M14 11v5" />
+  </svg>
+)
+
 // ---- Avatar ----------------------------------------------------------------
 
 /** Circular profile picture; falls back to initials, then a person glyph. */
@@ -140,7 +327,7 @@ export function Avatar({ src, name = '', size = 40 }) {
   const initials = name.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
   return (
     <span
-      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-royal/15 ring-2 ring-royal/40 dark:bg-royal/25"
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full"
       style={{ width: size, height: size }}
     >
       {src ? (
@@ -232,22 +419,6 @@ export function MiniRing({ label, value, goal, color }) {
   )
 }
 
-/** Linear macro progress bar (used in Analytics). `color` is a bg-* class. */
-export function MacroBar({ label, value, goal, color }) {
-  const pct = goal > 0 ? Math.min(Math.max(value / goal, 0), 1) * 100 : 0
-  return (
-    <div>
-      <div className="mb-1.5 flex justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className={`tabular-nums ${muted}`}>{fmt0(value)} / {fmt0(goal)} {t('g')}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
-
 export const StatTile = ({ title, value, unit, sub }) => (
   <Card className="flex-1">
     <p className={`text-xs ${muted}`}>{title}</p>
@@ -295,7 +466,7 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
   const side = isRTL() ? -1 : 1                         // push pages come from the left in right-to-left
   const reduce = useReducedMotion()
   const controls = useDragControls()
-  const W = window.innerWidth
+  const W = window.innerWidth 
   const H = window.innerHeight
   const off = modal ? H : W * side
   const pos = useMotionValue(off)                       // starts off-screen, animates to 0
@@ -317,10 +488,11 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
         aria-hidden="true"
       />
       <motion.div
-        className={`absolute flex flex-col overflow-hidden bg-canvas text-zinc-900 will-change-transform dark:bg-black dark:text-white ${
+        className={`absolute flex flex-col overflow-hidden text-zinc-900 will-change-transform dark:text-white ${
           modal
-            ? 'inset-x-0 bottom-0 rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/5 dark:ring-white/10'
-            : `inset-0 ${side > 0 ? 'shadow-[-12px_0_32px_rgba(0,0,0,0.25)]' : 'shadow-[12px_0_32px_rgba(0,0,0,0.25)]'}`
+            // Frosted: the page behind shows faintly through the sheet.
+            ? 'inset-x-0 bottom-0 rounded-t-[28px] bg-canvas/70 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/5 backdrop-blur-2xl backdrop-saturate-150 dark:bg-black/30 dark:ring-white/10'
+            : `bg-canvas dark:bg-black inset-0 ${side > 0 ? 'shadow-[-12px_0_32px_rgba(0,0,0,0.25)]' : 'shadow-[12px_0_32px_rgba(0,0,0,0.25)]'}`
         }`}
         // A bottom sheet stops short of the top so the page behind peeks out.
         style={modal ? { y: pos, top: 'calc(env(safe-area-inset-top) + 10px)' } : { x: pos }}
@@ -414,7 +586,7 @@ export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCance
 }
 
 /** Dialog that asks for a name (used when saving a meal as a template). */
-export function NameDialog({ title, message, initial = '', confirmLabel, onConfirm, onCancel }) {
+export function NameDialog({ title, message, initial = '', confirmLabel, placeholder, onConfirm, onCancel }) {
   const [name, setName] = useState(initial)
   const trimmed = name.trim()
   return (
@@ -426,7 +598,7 @@ export function NameDialog({ title, message, initial = '', confirmLabel, onConfi
       {message && <p className={`mt-2 text-sm ${muted}`}>{message}</p>}
       <TextInput
         value={name} onChange={(e) => setName(e.target.value)}
-        placeholder={t('Template name')} aria-label={t('Template name')} className="mt-4"
+        placeholder={placeholder ?? t('Template name')} aria-label={placeholder ?? t('Template name')} className="mt-4"
       />
       <div className="mt-4 flex gap-3">
         <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${fieldBg}`}>{t('Cancel')}</button>

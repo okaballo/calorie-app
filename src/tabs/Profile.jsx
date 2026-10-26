@@ -3,10 +3,10 @@ import { useRef, useState } from 'react'
 import { fmt0 } from '../lib/calc.js'
 import { toAvatarDataUrl } from '../lib/image.js'
 import {
-  Card, SectionTitle, PageTitle, TextInput, FieldRow, Segmented, Avatar, ChevronIcon,
+  Card, SectionTitle, PageTitle, TextInput, FieldRow, GlassSwitch, SunIcon, MoonIcon, Avatar, ChevronIcon,
   muted, faint, accentText,
 } from '../components/ui.jsx'
-import { t, LANGUAGES } from '../lib/i18n.js'
+import { t } from '../lib/i18n.js'
 
 export default function Profile({ profile, onChange, avatar, onAvatar, theme, onTheme, lang, onLang, onOpenPlan }) {
   const fileInput = useRef(null)
@@ -57,22 +57,26 @@ export default function Profile({ profile, onChange, avatar, onAvatar, theme, on
       </Card>
 
       {/* ---- Theme ---- */}
-      <Card className="space-y-3">
+      <Card className="flex items-center justify-between gap-3">
         <SectionTitle>{t('Appearance')}</SectionTitle>
-        <Segmented
-          options={['Dark', 'Light']}
-          value={theme === 'dark' ? 'Dark' : 'Light'}
-          onChange={(option) => onTheme(option.toLowerCase())}
+        <GlassSwitch
+          label={t('Appearance')}
+          value={theme === 'dark' ? 1 : 0}
+          onChange={(v) => onTheme(v ? 'dark' : 'light')}
+          left={{ icon: <SunIcon className="h-4 w-4" /> }}
+          right={{ icon: <MoonIcon className="h-4 w-4" /> }}
         />
       </Card>
 
       {/* ---- Language: Arabic also switches the layout to right-to-left ---- */}
-      <Card className="space-y-3">
+      <Card className="flex items-center justify-between gap-3">
         <SectionTitle>{t('Language')}</SectionTitle>
-        <Segmented
-          options={Object.values(LANGUAGES)}
-          value={LANGUAGES[lang] ?? LANGUAGES.en}
-          onChange={(name) => onLang(Object.keys(LANGUAGES).find((code) => LANGUAGES[code] === name))}
+        <GlassSwitch
+          label={t('Language')}
+          value={lang === 'ar' ? 1 : 0}
+          onChange={(v) => onLang(v ? 'ar' : 'en')}
+          left={{ icon: 'En' }}
+          right={{ icon: 'ع' }}
         />
       </Card>
 

@@ -1,26 +1,153 @@
 // Home tab: KiBase header, calorie ring (with the active day inside it),
-// three macro rings, and the meals of the ACTIVE tracking day.
+// three macro rings, the meals of the ACTIVE tracking day, then the
+// analytics section (passed in as `analytics`, see components/Analytics.jsx).
 // The day only changes when the user confirms Start New Day.
-import { useState } from 'react'
-import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, num, fmt0 } from '../lib/calc.js'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
+import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, dayKey, currentWeek, num, fmt0 } from '../lib/calc.js'
 import {
   Card, SectionTitle, PrimaryButton, CalorieRing, MiniRing, MacroSummary, Avatar, PencilIcon,
   ConfirmDialog, NameDialog, muted, faint, accentText, divider,
 } from '../components/ui.jsx'
-import { t, locale } from '../lib/i18n.js'
+import { t, locale, isRTL } from '../lib/i18n.js'
+
+/**
+ * The week of the viewed day, as a compact strip. Swipe it sideways to change
+ * week. A day with meals gets a check; a cheat day has a red letter (the cheat
+ * colour from Analytics); the current (active) tracking day has a bold accent
+ * letter so it is easy to find again. Days after the current day are disabled.
+ */
+function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
+  const week = currentWeek(meals, viewDay)
+  const ref = useRef(null)
+  const drag = useRef(null)     // { x, y, id, horizontal } while a finger is down
+  const enter = useRef(0)       // direction the new week slides in from after a swipe
+  const x = useMotionValue(0)
+  const opacity = useTransform(x, [-160, 0, 160], [0.35, 1, 0.35])
+  const hasNext = dayKey(week[6].date) < activeDate // nothing after the current day's week
+
+  const weekKey = (days) => {
+    const d = parseDay(viewDay)
+    d.setDate(d.getDate() + days)
+    const key = dayKey(d)
+    return key > activeDate ? activeDate : key
+  }
+
+  // The new week is already rendered when this runs, so start it off-screen on
+  // the side the swipe came from and slide it in.
+  useLayoutEffect(() => {
+    if (!enter.current) return
+    const w = ref.current?.clientWidth ?? 320
+    x.set(enter.current * w)
+    enter.current = 0
+    animate(x, 0, { type: 'spring', stiffness: 120, damping: 38 })
+  }, [viewDay, x])
+
+  // The strip follows the finger, then either slides out and swaps the week
+  // (swipe toward the next week is right-to-left in English, mirrored in
+  // Arabic) or springs back. The pager ignores touches here (data-no-swipe).
+  const onPointerDown = (e) => { drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null } }
+  const onPointerMove = (e) => {
+    const s = drag.current
+    if (!s) return
+    const dx = e.clientX - s.x
+    const dy = e.clientY - s.y
+    if (s.horizontal === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+      s.horizontal = Math.abs(dx) > Math.abs(dy) * 1.5
+      if (s.horizontal) {
+        animate(x, x.get(), { duration: 0 }) // grab it if a spring is still running
+        e.currentTarget.setPointerCapture?.(s.id) // after this a lift is not a tap on a day
+      }
+    }
+    if (!s.horizontal) return
+    const forward = isRTL() ? dx > 0 : dx < 0
+    x.set(forward && !hasNext ? dx * 0.25 : dx) // resistance where there is no next week
+  }
+  const onPointerUp = (e) => {
+    const s = drag.current
+    drag.current = null
+    if (!s?.horizontal) return
+    const dx = e.clientX - s.x
+    const forward = isRTL() ? dx > 0 : dx < 0
+    const w = ref.current?.clientWidth ?? 320
+    if (Math.abs(dx) < 40 || (forward && !hasNext)) {
+      animate(x, 0, { type: 'spring', stiffness: 420, damping: 38 })
+      return
+    }
+    const out = dx < 0 ? -w : w
+    animate(x, out, { duration: 0.1, ease: 'easeIn' }).then(() => {
+      enter.current = -Math.sign(out)
+      onViewDay(weekKey(forward ? 7 : -7))
+    })
+  }
+  const cancel = () => {
+    drag.current = null
+    animate(x, 0, { type: 'spring', stiffness: 420, damping: 38 })
+  }
+
+  return (
+    <motion.section
+      ref={ref}
+      aria-label={t('Viewing')}
+      data-no-swipe
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={cancel}
+      className="grid select-none grid-cols-7"
+      style={{ touchAction: 'pan-y', x, opacity }}
+    >
+      {week.map(({ date, totals }) => {
+        const key = dayKey(date)
+        const future = key > activeDate
+        const selected = key === viewDay
+        const current = key === activeDate
+        const logged = totals.calories > 0
+        const cheat = cheatDays.includes(key)
+        const letter = cheat ? 'text-[#FF3547]' : current ? accentText : selected ? '' : muted
+        return (
+          <button
+            key={key}
+            disabled={future}
+            onClick={() => onViewDay(key)}
+            aria-pressed={selected}
+            aria-label={`${date.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}${cheat ? `, ${t('Cheat Day')}` : ''}`}
+            className={`flex flex-col items-center gap-1.5 rounded-xl py-1 transition active:scale-95 disabled:opacity-30 ${selected ? 'bg-black/5 dark:bg-white/8' : ''}`}
+          >
+            <span className={`text-xs ${current || selected || cheat ? 'font-bold' : 'font-medium'} ${letter}`}>
+              {date.toLocaleDateString(locale(), { weekday: 'narrow' })}
+            </span>
+            <span className={`flex size-6 items-center justify-center rounded-full ${
+              logged
+                ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900'
+                : `border-2 ${selected ? 'border-zinc-500 dark:border-zinc-400' : 'border-zinc-300 dark:border-zinc-600'}`
+            }`}>
+              {logged && (
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+              )}
+            </span>
+          </button>
+        )
+      })}
+    </motion.section>
+  )
+}
 
 export default function Home({
-  profile, avatar, meals, activeDay,
-  onAddMeal, onEditMeal, onDeleteMeal, onStartNewDay, onSaveTemplate, onOpenProfile,
+  profile, avatar, meals, activeDay, viewDay, onViewDay, cheatDays = [],
+  onAddMeal, onEditMeal, onDeleteMeal, onStartNewDay, onSaveTemplate, onOpenProfile, analytics,
 }) {
   const [confirming, setConfirming] = useState(false)
   const [savingMeal, setSavingMeal] = useState(null) // meal being saved as a template
   const [savedId, setSavedId] = useState(null)       // briefly highlights the save icon
 
-  // Only the active day's meals count, and only they are listed, so the
-  // dashboard AND the meal list both start empty after Start New Day.
-  const dayMeals = meals.filter((m) => mealDay(m) === activeDay.date) // newest first
-  const dayLabel = parseDay(activeDay.date).toLocaleDateString(locale(), {
+  // Only the viewed day's meals count and are listed (the active day unless
+  // another date is picked), so the dashboard AND the meal list always match it.
+  const isActive = viewDay === activeDay.date
+  const dayMeals = meals.filter((m) => mealDay(m) === viewDay) // newest first
+  const dayLabel = parseDay(viewDay).toLocaleDateString(locale(), {
     weekday: 'long', day: 'numeric', month: 'short',
   })
   const totals = dayMeals.reduce((sum, m) => add(sum, mealTotals(m)), ZERO)
@@ -48,16 +175,28 @@ export default function Home({
         </button>
       </header>
 
-      {/* ---- Calories (active day shown inside the card) ---- */}
+      <WeekStrip viewDay={viewDay} activeDate={activeDay.date} meals={meals} cheatDays={cheatDays} onViewDay={onViewDay} />
+
+      {/* ---- Calories (viewed day shown inside the card) ---- */}
       <Card>
         <div className="flex items-baseline justify-between">
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${muted}`}>{t('Current Day')}</p>
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${isActive ? muted : accentText}`}>
+            {t(isActive ? 'Current Day' : 'Viewing')}
+          </p>
           <p className="text-sm font-semibold">{dayLabel}</p>
         </div>
-        <div className="mt-3">
-          <CalorieRing progress={progress} remaining={goal - totals.calories} />
+        {/* Hero: a wide, heavily diffused Royal Purple bloom sits behind the
+            ring only, lifting it off the card without tinting anything else. */}
+        <div className="relative mt-3">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-1/2 size-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(120,81,169,0.22),rgba(120,81,169,0.08)_55%,transparent)] blur-2xl dark:bg-[radial-gradient(closest-side,rgba(120,81,169,0.45),rgba(120,81,169,0.14)_55%,transparent)]"
+          />
+          <div className="relative">
+            <CalorieRing progress={progress} remaining={goal - totals.calories} />
+          </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 divide-x divide-black/5 text-center dark:divide-white/10">
+        <div className="mt-4 grid grid-cols-2 divide-x divide-black/6 text-center dark:divide-white/8">
           <div>
             <p className="text-xl font-semibold tabular-nums">{fmt0(totals.calories)}</p>
             <p className={`text-xs ${muted}`}>{t('Eaten')}</p>
@@ -101,7 +240,7 @@ export default function Home({
                     <MacroSummary macros={mt} glow />
                   </div>
                   <div className="text-end">
-                    <p className={`glow-text font-semibold tabular-nums ${accentText}`}>{fmt0(mt.calories)}</p>
+                    <p className="font-semibold tabular-nums">{fmt0(mt.calories)}</p>
                     <p className={`text-[11px] ${muted}`}>{t('kcal')}</p>
                   </div>
                   <button
@@ -135,16 +274,30 @@ export default function Home({
         )}
       </Card>
 
-      {/* Outlined and at the very bottom, so it is hard to hit by accident. */}
-      <button
-        onClick={() => setConfirming(true)}
-        className={`w-full rounded-2xl border border-royal py-3.5 font-semibold transition active:bg-royal/15 ${accentText}`}
-      >
-        {t('Start New Day')}
-      </button>
-      <p className={`-mt-2 text-center text-xs ${faint}`}>
-        {t('Meals keep counting towards {day} until you start a new day.', { day: dayLabel })}
-      </p>
+      {analytics}
+
+      {/* Quiet hairline button at the very bottom, so it is hard to hit by
+          accident. Neutral on purpose: purple is kept for active elements. */}
+      {isActive ? (
+        <>
+          <button
+            onClick={() => setConfirming(true)}
+            className="w-full rounded-2xl border-[0.5px] border-black/10 bg-white py-3.5 font-semibold transition active:scale-[0.98] active:bg-black/5 dark:border-white/12 dark:bg-white/4 dark:active:bg-white/8"
+          >
+            {t('Start New Day')}
+          </button>
+          <p className={`-mt-2 text-center text-xs ${faint}`}>
+            {t('Meals keep counting towards {day} until you start a new day.', { day: dayLabel })}
+          </p>
+        </>
+      ) : (
+        <>
+          <PrimaryButton onClick={() => onViewDay(activeDay.date)}>{t('Back to current day')}</PrimaryButton>
+          <p className={`-mt-2 text-center text-xs ${faint}`}>
+            {t('Editing a past day. Changes update your Analytics.')}
+          </p>
+        </>
+      )}
 
       {savingMeal && (
         <NameDialog

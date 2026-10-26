@@ -8,13 +8,25 @@
 @theme {
   --color-royal: #7851a9;       /* Royal Purple */
   --color-lilac: #b58ff2;       /* lighter tint, used on dark backgrounds */
-  --color-card: #17171c;        /* dark card */
+  --color-card: #0e0e11;        /* dark card: deep graphite on OLED black */
   --color-field: #26262e;       /* dark input */
-  --color-canvas: #f2f2f7;      /* light page background */
+  --color-canvas: #f7f7f8;      /* light page background: soft off-white */
+
+  /* shadcn tokens used by components/ui (mapped onto the Royal Purple theme) */
+  --color-primary: #7851a9;
+  --color-primary-foreground: #ffffff;
+  --color-ring: #7851a9;
   --color-carbs: #8c9eff;
   --color-carbs-deep: #5468e0;  /* carbs text on light backgrounds */
   --color-fat: #ed85d9;
   --color-fat-deep: #c2409f;    /* fats text on light backgrounds */
+
+  /* San Francisco. SF Pro and SF Arabic are Apple system fonts (their licence
+     forbids bundling them), so we reach them through the system font stack:
+     -apple-system is SF Pro on iOS / macOS and falls back to SF Arabic for
+     Arabic text on its own. The named entries cover installed copies. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", system-ui, sans-serif;
+  --font-arabic: "SF Arabic", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
 html, body, #root { height: 100%; }
@@ -24,12 +36,29 @@ html, body, #root { height: 100%; }
 body {
   background: var(--color-canvas);
   color: #18181b;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   transition: background-color .3s ease, color .3s ease;
 }
 .dark body { background: #000; color: #fff; }
+
+/* Soft Royal Purple glow at the top of the screen that fades into the
+   background (pure black in dark mode, off-white in light mode). It sits
+   behind the pages, which are transparent, so it never scrolls. */
+/* .app-glow {
+  background:
+    radial-gradient(120% 52% at 50% -4%, rgba(120, 81, 169, 0.16), rgba(120, 81, 169, 0.06) 50%, transparent 88%),
+    linear-gradient(to bottom, rgba(181, 143, 242, 0.14), transparent 38%);
+} */
+.dark .app-glow {
+  background:
+    radial-gradient(140% 150% at 120% -30%, rgba(120, 81, 169, 0.5), rgba(120, 81, 169, 0.16) 0%, transparent 88%),
+    linear-gradient(to bottom, rgba(181, 143, 242, 0.05), transparent 98%);
+}
+
+/* Arabic layout: SF Arabic first (set from the language in App). */
+:root[lang="ar"] body { font-family: var(--font-arabic); }
 
 /* 16px stops iOS Safari from zooming in when an input is focused. */
 input, select { font-size: 16px; }
