@@ -3,7 +3,7 @@
 // Saved in localStorage (see useLocalStorage):
 //   mt.profile      name, body stats and daily goals
 //   mt.avatar       profile picture as a base64 JPEG data URL (or null)
-//   mt.theme        'dark' | 'light'
+//   mt.theme        'system' | 'dark' | 'light'
 //   mt.lang         'en' | 'ar' (Arabic switches the layout to right-to-left)
 //   mt.meals        logged meals, newest first, each tagged with its tracking day
 //   mt.customFoods  the user's own items (per 100 g)
@@ -45,8 +45,8 @@ const DEFAULT_PROFILE = {
   calorieGoal: 2100, proteinGoal: 140, carbsGoal: 250, fatGoal: 60,
 }
 
-// Tab icons: one closed shape each, drawn as an outline when inactive and
-// filled when active. evenodd keeps the cut-outs (e.g. the scale dial) open.
+// Tab icons: one outlined shape each. The active tab only changes colour; the
+// icons are never filled.
 const ICONS = {
   Home: 'M3.5 10.2 12 3l8.5 7.2V20a1 1 0 0 1-1 1H15v-6.5H9V21H4.5a1 1 0 0 1-1-1z',
   // Dumbbell: outer plate, inner plate, bar, inner plate, outer plate.
@@ -71,10 +71,10 @@ const LENS_SPRING = { type: 'spring', stiffness: 380, damping: 30, mass: 1 }
 const FOLLOW_SPRING = { type: 'spring', stiffness: 900, damping: 60 }
 const PRESS_SPRING = { type: 'spring', stiffness: 500, damping: 30 }
 
-/** Tab icon: outline when inactive, filled when lit (under the lens). */
-const TabIcon = ({ name, filled }) => (
+/** Tab icon: always an outline; the lit row just has a different colour. */
+const TabIcon = ({ name }) => (
   <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true"
-    fill={filled ? 'currentColor' : 'none'} fillRule="evenodd"
+    fill="none" fillRule="evenodd"
     stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
     <path d={ICONS[name]} />
   </svg>
@@ -107,6 +107,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
   const slotW = useMotionValue(0)        // same width, readable inside motion transforms
   const lensX = useMotionValue(0)        // lens left edge, px from the row's physical left
   const press = useMotionValue(0)        // 0 resting pill .. 1 glass lens
+  const edge = useMotionValue(0)         // px the lens is stretched past the first / last tab (signed)
   const drag = useRef(null)              // { x0, moved } while a finger is down
 
   useLayoutEffect(() => {
@@ -125,6 +126,8 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
   // Tabs run right-to-left in Arabic, so slot positions are mirrored.
   const slotX = (i) => (rtl ? TABS - 1 - i : i) * tabW
   const moveLens = (target, spring = LENS_SPRING) => (reduce ? lensX.set(target) : animate(lensX, target, spring))
+  // Lets go of the stretch with a little elastic wobble.
+  const relax = () => (reduce ? edge.set(0) : animate(edge, 0, { type: 'spring', stiffness: 420, damping: 18 }))
   const lift = (to, delay = 0) => (reduce ? press.set(to) : animate(press, to, { ...PRESS_SPRING, delay }))
 
   // Follow the active tab (taps, page swipes, far jumps), except mid-drag.
@@ -142,24 +145,30 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
   const stretch = useTransform(velocity, (v) => Math.min(Math.abs(v) / 3000, 0.25))
   const lensScaleX = useTransform([press, stretch], ([p, s]) => 1 + 0.16 * p + s)
   const lensScaleY = useTransform([press, stretch], ([p, s]) => 1 + 0.24 * p - 0.4 * s)
+  // Dragging past either end: the lens stays on the end tab but stretches
+  // toward the finger (its inner edge stays put, the outer edge follows) and
+  // squashes a little, like it is being pulled.
+  const lensCenterX = useTransform([lensX, edge], ([x, e]) => x + e / 2)
+  const lensStretchX = useTransform([lensScaleX, edge, slotW], ([sx, e, w]) => sx + (w ? Math.abs(e) / w : 0))
+  const lensSquashY = useTransform([lensScaleY, edge, slotW], ([sy, e, w]) => sy * (1 - 0.12 * Math.min(w ? Math.abs(e) / w : 0, 1)))
   const pillOpacity = useTransform(press, (p) => 1 - p)
   const barScale = useTransform(press, [0, 1], [1, 1.03])
   const zoom = useTransform(press, [0, 1], [1, 1.12])   // magnification under the lens
 
   // On-screen lens span in row coordinates: centre +- half its scaled width.
-  const muteMask = useTransform([lensX, lensScaleX, slotW], ([x, sx, w]) => {
+  const muteMask = useTransform([lensCenterX, lensStretchX, slotW], ([x, sx, w]) => {
     const l = x + (w / 2) * (1 - sx)
     const r = x + (w / 2) * (1 + sx)
     return `linear-gradient(to right, #000 ${l}px, transparent ${l}px, transparent ${r}px, #000 ${r}px)`
   })
   // The lit row is scaled by `zoom` around the lens centre, so its clip is
   // divided by `zoom` to land on the same on-screen span.
-  const litClip = useTransform([lensX, lensScaleX, zoom, slotW], ([x, sx, z, w]) => {
+  const litClip = useTransform([lensCenterX, lensStretchX, zoom, slotW], ([x, sx, z, w]) => {
     const c = x + w / 2
     const h = ((w / 2) * sx) / z
     return `inset(0px ${w * TABS - c - h}px 0px ${c - h}px)`
   })
-  const litOrigin = useTransform([lensX, slotW], ([x, w]) => (w ? (x + w / 2) / (w * TABS) : 0.5))
+  const litOrigin = useTransform([lensCenterX, slotW], ([x, w]) => (w ? (x + w / 2) / (w * TABS) : 0.5))
 
   // ---- Gestures ------------------------------------------------------------
   // Pointer x as unscaled px from the row's left (the bar itself scales on press).
@@ -182,7 +191,16 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
     const d = drag.current
     if (!d || (!d.moved && Math.abs(e.clientX - d.x0) < 6)) return
     d.moved = true
-    moveLens(clamp(rowPx(e.clientX) - tabW / 2, 0, tabW * (TABS - 1)), FOLLOW_SPRING)
+    const want = rowPx(e.clientX) - tabW / 2
+    const max = tabW * (TABS - 1)
+    const clamped = clamp(want, 0, max)
+    moveLens(clamped, FOLLOW_SPRING)
+    // Past either end: rubber-band the overshoot into a stretch (never more
+    // than ~0.9 of a tab, however far the finger goes).
+    const over = want - clamped
+    const dim = tabW * 0.3
+    if (reduce) edge.set(0)
+    else edge.set(Math.sign(over) * (1 - 1 / ((Math.abs(over) * 0.55) / dim + 1)) * dim)
   }
   const onPointerUp = (e) => {
     const d = drag.current
@@ -190,6 +208,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
     drag.current = null
     const i = tabAt(rowPx(e.clientX))
     moveLens(slotX(i))
+    relax()
     // After a tap, stay a lens while it travels so the slide reads as glass.
     lift(0, d.moved ? 0 : 0.16)
     // A drag that ends back on the open tab is not a "tap active tab = scroll to top".
@@ -199,17 +218,18 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
     if (!drag.current) return
     drag.current = null
     moveLens(slotX(active))
+    relax()
     lift(0)
   }
 
   const tabRow = (lit) => TAB_ORDER.map((name) => {
     const body = (
       <>
-        <TabIcon name={name} filled={lit} />
+        <TabIcon name={name} />
         <span className="max-w-full truncate px-0.5">{t(name)}</span>
       </>
     )
-    const layout = 'flex min-w-0 flex-col items-center justify-center gap-0.5 text-[10px] font-medium'
+    const layout = 'flex min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-medium'
     return lit ? (
       <div key={name} className={`${layout} text-royal dark:text-lilac`}>{body}</div>
     ) : (
@@ -237,7 +257,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
         onPointerCancel={onPointerCancel}
         onLostPointerCapture={onPointerCancel}
         style={{ scale: barScale }}
-        className="pointer-events-auto relative isolate h-[62px] min-w-0 flex-1 touch-none select-none rounded-full bg-white/20 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] dark:bg-white/[0.06] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.9)]"
+        className="glass-surface pointer-events-auto relative isolate h-[62px] min-w-0 flex-1 touch-none select-none rounded-full bg-white/20 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] dark:bg-white/[0.06] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.9)]"
       >
         <GlassBackdrop />
         <div aria-hidden="true" className={`pointer-events-none absolute inset-0 rounded-full ${glassRim}`} />
@@ -247,7 +267,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-black/6 dark:bg-black/45"
-            style={{ width: slotW, x: lensX, scaleX: lensScaleX, scaleY: lensScaleY, opacity: pillOpacity }}
+            style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, opacity: pillOpacity }}
           />
 
           <motion.div className="relative grid h-full grid-cols-4" style={{ maskImage: muteMask, WebkitMaskImage: muteMask }}>
@@ -266,7 +286,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-0 rounded-full"
-            style={{ width: slotW, x: lensX, scaleX: lensScaleX, scaleY: lensScaleY, opacity: press }}
+            style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, opacity: press }}
           >
             <div className={`absolute inset-0 rounded-full bg-white/5 ${glassRim}`} />
             <div className="absolute inset-0 rounded-full shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.55),inset_-2px_0_3px_-1px_rgba(237,133,217,0.5)]" />
@@ -279,7 +299,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
         onClick={onAdd}
         aria-label={t('Log a meal')}
         size="icon"
-        className="pointer-events-auto isolate size-[62px] shrink-0 rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] backdrop-blur-2xl backdrop-saturate-180 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white [&>div]:rounded-full [&>div:nth-of-type(2)]:hidden"
+        className="glass-surface pointer-events-auto isolate size-[62px] shrink-0 rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] backdrop-blur-2xl backdrop-saturate-180 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white [&>div]:rounded-full [&>div:nth-of-type(2)]:hidden"
       >
         {/* No warp on this one: at 56 px it only roughens the circle, so
             LiquidButton's warp layer is hidden above. Its rim highlights are
@@ -296,7 +316,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
 export default function App() {
   const [storedProfile, setProfile] = useLocalStorage('mt.profile', DEFAULT_PROFILE)
   const [avatar, setAvatar] = useLocalStorage('mt.avatar', null)
-  const [theme, setTheme] = useLocalStorage('mt.theme', 'dark')
+  const [theme, setTheme] = useLocalStorage('mt.theme', 'system')
   const [lang, setLang] = useLocalStorage('mt.lang', 'en')
   // Set before any child renders, so every t() call below uses this language.
   setLanguage(lang)
@@ -384,9 +404,18 @@ export default function App() {
     setCheatDays((list) => (list.includes(key) ? list.filter((d) => d !== key) : [...list, key]))
 
   // Theme: toggling the `dark` class on <html> switches every `dark:` variant.
+  // 'system' follows the device and changes with it, even while the app is open.
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#000000' : '#f7f7f8')
+    const query = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const dark = theme === 'dark' || (theme !== 'light' && query.matches)
+      document.documentElement.classList.toggle('dark', dark)
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#000000' : '#f7f7f8')
+    }
+    apply()
+    if (theme !== 'system') return undefined
+    query.addEventListener('change', apply)
+    return () => query.removeEventListener('change', apply)
   }, [theme])
 
   // Language: Arabic flips the whole layout to right-to-left.
@@ -659,6 +688,13 @@ export default function App() {
           ))}
         </motion.div>
       </div>
+
+      {/* Scroll edge: content fades out where it meets the floating tab bar, so
+          a coloured card never shows as a smear between the glass shapes. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[calc(env(safe-area-inset-bottom)+112px)] bg-linear-to-t from-canvas/85 via-canvas/45 to-transparent dark:from-black/85 dark:via-black/45"
+      />
 
       <TabBar navIndex={navIndex} onTab={goTo} onAdd={() => setMealOpen(true)} lang={lang} />
 

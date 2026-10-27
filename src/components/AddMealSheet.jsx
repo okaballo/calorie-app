@@ -8,7 +8,7 @@
 // and every total derived from meals updates on the next render.
 import { useState } from 'react'
 import { ZERO, add, scale, num, fmt0, fmt1 } from '../lib/calc.js'
-import { Card, SectionTitle, Sheet, TextInput, muted, accentText, carbsText, fatText } from './ui.jsx'
+import { Card, SectionTitle, Sheet, TextInput, focusRing, muted, accentText, carbsText, fatText } from './ui.jsx'
 import { FoodPicker, PickedList } from './FoodPicker.jsx'
 import { toPicked, toItems } from '../lib/picked.js'
 import { t } from '../lib/i18n.js'
@@ -17,9 +17,11 @@ import { t } from '../lib/i18n.js'
 export const ToolButton = ({ onClick, icon, children }) => (
   <button
     onClick={onClick}
-    className={`flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-royal/50 px-2 py-2.5 text-[13px] font-semibold transition active:bg-royal/10 ${accentText}`}
+    type="button"
+    className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-royal/50 px-3 py-2.5 text-center text-[13px] leading-tight font-semibold text-balance transition active:bg-royal/10 ${focusRing} ${accentText}`}
   >
-    <span className="text-base leading-none">{icon}</span> {children}
+    <span aria-hidden="true" className="text-lg leading-none">{icon}</span>
+    <span>{children}</span>
   </button>
 )
 

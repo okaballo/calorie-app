@@ -1,6 +1,6 @@
 // Create or edit a custom item. Values are per 100 g; when logging later you
 // only type the grams. Pass `food` to edit an existing item.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { num, fmt0 } from '../lib/calc.js'
 import { Card, SectionTitle, FieldRow, PrimaryButton, Sheet, TextInput, ConfirmDialog, muted } from './ui.jsx'
 import { t } from '../lib/i18n.js'
@@ -20,6 +20,8 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
   }))
   const [confirmDelete, setConfirmDelete] = useState(false)
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const initial = useRef(JSON.stringify(form))
+  const dirty = JSON.stringify(form) !== initial.current // unsaved edits: closing by swipe asks first
 
   const protein = num(form.protein)
   const carbs = num(form.carbs)
@@ -47,7 +49,7 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
   }
 
   return (
-    <Sheet title={t(editing ? 'Edit Custom Item' : 'Custom Meal')} onClose={onClose} z="z-50">
+    <Sheet title={t(editing ? 'Edit Custom Item' : 'Custom Meal')} onClose={onClose} dirty={dirty} z="z-50">
       <Card className="space-y-3.5">
         <SectionTitle>{editing ? t(food.name) : t('Create a custom meal')}</SectionTitle>
         <p className={`text-[13px] ${muted}`}>

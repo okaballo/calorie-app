@@ -3,11 +3,11 @@
 // analytics section (passed in as `analytics`, see components/Analytics.jsx).
 // The day only changes when the user confirms Start New Day.
 import { useLayoutEffect, useRef, useState } from 'react'
-import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, dayKey, currentWeek, num, fmt0 } from '../lib/calc.js'
 import {
-  Card, SectionTitle, PrimaryButton, CalorieRing, MiniRing, MacroSummary, Avatar, PencilIcon,
-  ConfirmDialog, NameDialog, muted, faint, accentText, divider,
+  Card, SectionTitle, PrimaryButton, CalorieRing, MiniRing, MacroSummary, Avatar, PencilIcon, TrashIcon, EmptyState,
+  ConfirmDialog, NameDialog, focusRing, hitSlopY, muted, faint, accentText, divider, project, useRowMotion,
 } from '../components/ui.jsx'
 import { t, locale, isRTL } from '../lib/i18n.js'
 
@@ -17,36 +17,52 @@ import { t, locale, isRTL } from '../lib/i18n.js'
  * colour from Analytics); the current (active) tracking day has a bold accent
  * letter so it is easy to find again. Days after the current day are disabled.
  */
-function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
-  const week = currentWeek(meals, viewDay)
-  const ref = useRef(null)
-  const drag = useRef(null)     // { x, y, id, horizontal } while a finger is down
-  const enter = useRef(0)       // direction the new week slides in from after a swipe
-  const x = useMotionValue(0)
-  const opacity = useTransform(x, [-160, 0, 160], [0.35, 1, 0.35])
-  const hasNext = dayKey(week[6].date) < activeDate // nothing after the current day's week
+// Week strip motion: soft on purpose, gentler than the app's sheet SPRING.
+const SOFT = { type: 'spring', stiffness: 260, damping: 32, restDelta: 0.5, restSpeed: 10 }
 
-  const weekKey = (days) => {
+function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
+  const ref = useRef(null)
+  const drag = useRef(null)     // { x, y, id, horizontal, base, dx0, hist } while a finger is down
+  const anim = useRef(null)     // the spring currently moving the track
+  const reduce = useReducedMotion()
+  const x = useMotionValue(0)
+  const dir = isRTL() ? -1 : 1  // the next week sits on this side (right in English)
+
+  const shiftKey = (days) => {
     const d = parseDay(viewDay)
     d.setDate(d.getDate() + days)
-    const key = dayKey(d)
-    return key > activeDate ? activeDate : key
+    return dayKey(d)
+  }
+  const prevKey = shiftKey(-7)
+  const nextKey = shiftKey(7)
+  const week = currentWeek(meals, viewDay)
+  const hasNext = dayKey(week[6].date) < activeDate // nothing after the current day's week
+  const prevWeek = currentWeek(meals, prevKey)
+  const nextWeek = hasNext ? currentWeek(meals, nextKey > activeDate ? activeDate : nextKey) : null
+
+  // Moves the track to `to`; with Reduce Motion it jumps instead of springing.
+  const move = (to, options) => {
+    anim.current?.stop()
+    if (reduce) { x.set(to); return Promise.resolve() }
+    anim.current = animate(x, to, options)
+    return anim.current
   }
 
-  // The new week is already rendered when this runs, so start it off-screen on
-  // the side the swipe came from and slide it in.
+  // The neighbouring weeks ride along with the finger like tab pages. Once the
+  // swipe has settled and the viewed week changes, the track re-centres on the
+  // new week with no visible change (the neighbour already looks the same).
   useLayoutEffect(() => {
-    if (!enter.current) return
-    const w = ref.current?.clientWidth ?? 320
-    x.set(enter.current * w)
-    enter.current = 0
-    animate(x, 0, { type: 'spring', stiffness: 120, damping: 38 })
+    anim.current?.stop()
+    x.jump?.(0) ?? x.set(0)
   }, [viewDay, x])
 
-  // The strip follows the finger, then either slides out and swaps the week
-  // (swipe toward the next week is right-to-left in English, mirrored in
-  // Arabic) or springs back. The pager ignores touches here (data-no-swipe).
-  const onPointerDown = (e) => { drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null } }
+  // The track follows the finger 1:1 (from wherever it was grabbed, even
+  // mid-spring); on release the spring inherits the finger's speed and the
+  // flick is projected forward: it settles on the neighbouring week or springs
+  // back. The pager ignores touches here (data-no-swipe).
+  const onPointerDown = (e) => {
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null, base: 0, dx0: 0, hist: [] }
+  }
   const onPointerMove = (e) => {
     const s = drag.current
     if (!s) return
@@ -56,49 +72,54 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
       s.horizontal = Math.abs(dx) > Math.abs(dy) * 1.5
       if (s.horizontal) {
-        animate(x, x.get(), { duration: 0 }) // grab it if a spring is still running
+        anim.current?.stop()                      // grab it if a spring is still running
+        s.base = x.get()
+        s.dx0 = dx                                // no jump when the lock kicks in
         e.currentTarget.setPointerCapture?.(s.id) // after this a lift is not a tap on a day
       }
     }
     if (!s.horizontal) return
-    const forward = isRTL() ? dx > 0 : dx < 0
-    x.set(forward && !hasNext ? dx * 0.25 : dx) // resistance where there is no next week
+    s.hist.push({ t: e.timeStamp, x: e.clientX })
+    if (s.hist.length > 6) s.hist.shift()
+    const d = dx - s.dx0
+    const forward = isRTL() ? d > 0 : d < 0
+    x.set(s.base + (forward && !hasNext ? d * 0.25 : d)) // resistance where there is no next week
   }
   const onPointerUp = (e) => {
     const s = drag.current
     drag.current = null
     if (!s?.horizontal) return
+    // Release speed in px/s from the last ~100 ms of movement.
+    const recent = s.hist.filter((p) => e.timeStamp - p.t < 100)
+    const first = recent[0]
+    const last = recent[recent.length - 1]
+    const v = first && last && last.t > first.t ? Math.max(-4000, Math.min(4000, ((last.x - first.x) / (last.t - first.t)) * 1000)) : 0
     const dx = e.clientX - s.x
-    const forward = isRTL() ? dx > 0 : dx < 0
+    const end = dx + project(v)                  // where the flick is heading
+    const forward = isRTL() ? end > 0 : end < 0
     const w = ref.current?.clientWidth ?? 320
-    if (Math.abs(dx) < 40 || (forward && !hasNext)) {
-      animate(x, 0, { type: 'spring', stiffness: 420, damping: 38 })
+    if (Math.abs(end) < 40 || Math.sign(end) !== Math.sign(dx) || (forward && !hasNext)) {
+      move(0, { ...SOFT, velocity: v })
       return
     }
-    const out = dx < 0 ? -w : w
-    animate(x, out, { duration: 0.1, ease: 'easeIn' }).then(() => {
-      enter.current = -Math.sign(out)
-      onViewDay(weekKey(forward ? 7 : -7))
+    move(end < 0 ? -w : w, { ...SOFT, velocity: v }).then(() => {
+      onViewDay(forward ? (nextKey > activeDate ? activeDate : nextKey) : prevKey)
     })
   }
   const cancel = () => {
     drag.current = null
-    animate(x, 0, { type: 'spring', stiffness: 420, damping: 38 })
+    move(0, SOFT)
   }
 
-  return (
-    <motion.section
-      ref={ref}
-      aria-label={t('Viewing')}
-      data-no-swipe
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={cancel}
-      className="grid select-none grid-cols-7"
-      style={{ touchAction: 'pan-y', x, opacity }}
+  const renderWeek = (days, offset) => (
+    <div
+      key={offset}
+      inert={offset !== 0}
+      aria-hidden={offset !== 0 || undefined}
+      className={`grid grid-cols-7 ${offset === 0 ? '' : 'absolute top-0 w-full'}`}
+      style={offset === 0 ? undefined : { insetInlineStart: 0, transform: `translateX(${offset * dir * 100}%)` }}
     >
-      {week.map(({ date, totals }) => {
+      {days.map(({ date, totals }) => {
         const key = dayKey(date)
         const future = key > activeDate
         const selected = key === viewDay
@@ -131,7 +152,27 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
           </button>
         )
       })}
-    </motion.section>
+    </div>
+  )
+
+  return (
+    <section
+      ref={ref}
+      aria-label={t('Viewing')}
+      data-no-swipe
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={cancel}
+      className="select-none overflow-hidden"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <motion.div className="relative" style={{ x }}>
+        {renderWeek(prevWeek, -1)}
+        {renderWeek(week, 0)}
+        {nextWeek && renderWeek(nextWeek, 1)}
+      </motion.div>
+    </section>
   )
 }
 
@@ -139,6 +180,7 @@ export default function Home({
   profile, avatar, meals, activeDay, viewDay, onViewDay, cheatDays = [],
   onAddMeal, onEditMeal, onDeleteMeal, onStartNewDay, onSaveTemplate, onOpenProfile, analytics,
 }) {
+  const rowMotion = useRowMotion()
   const [confirming, setConfirming] = useState(false)
   const [savingMeal, setSavingMeal] = useState(null) // meal being saved as a template
   const [savedId, setSavedId] = useState(null)       // briefly highlights the save icon
@@ -170,7 +212,7 @@ export default function Home({
         <h1 dir="ltr" className="text-[30px] font-extrabold leading-none tracking-tight">
           <span className="bg-linear-to-br from-lilac to-royal bg-clip-text text-transparent">Ki</span>Base
         </h1>
-        <button onClick={onOpenProfile} aria-label={t('Open profile')} className="rounded-full transition active:scale-95">
+        <button type="button" onClick={onOpenProfile} aria-label={t('Open profile')} className={`rounded-full transition active:scale-95 ${focusRing}`}>
           <Avatar src={avatar} name={profile.name} size={40} />
         </button>
       </header>
@@ -222,18 +264,23 @@ export default function Home({
       <Card>
         <SectionTitle>{t('Recent Meals')}</SectionTitle>
         {dayMeals.length === 0 ? (
-          <div className="mt-3 space-y-3 text-center">
-            <p className={muted}>{t('No meals logged for this day yet.')}</p>
-            <PrimaryButton onClick={onAddMeal}>{t('Log a meal')}</PrimaryButton>
-          </div>
+          <EmptyState
+            icon={<path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M9 3v6M17 21V3c-2.2 1.2-3.5 3.6-3.5 6.5 0 2 .9 3.2 3.5 3.5" />}
+            action={<PrimaryButton onClick={onAddMeal}>{t('Log a meal')}</PrimaryButton>}
+          >
+            {t('No meals logged for this day yet.')}
+          </EmptyState>
         ) : (
-          <ul className={`mt-1 divide-y ${divider}`}>
+          // Keyed by day so switching days swaps the list without animating
+          // every row; only adding or deleting a meal does.
+          <ul key={viewDay} className={`relative mt-1 divide-y ${divider}`}>
+            <AnimatePresence initial={false} mode="popLayout">
             {dayMeals.map((meal) => {
               const mt = mealTotals(meal)
               const when = new Date(meal.date).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })
               const saved = savedId === meal.id
               return (
-                <li key={meal.id} className="flex items-start gap-2 py-3">
+                <motion.li key={meal.id} {...rowMotion} className="flex items-start gap-2 py-3">
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="line-clamp-2 text-sm font-semibold">{meal.name}</p>
                     <p className={`text-xs ${muted}`}>{when} · {fmt0(mealGrams(meal))} {t('g')}</p>
@@ -244,16 +291,18 @@ export default function Home({
                     <p className={`text-[11px] ${muted}`}>{t('kcal')}</p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => onEditMeal(meal)}
                     aria-label={t('Edit {name}', { name: meal.name })}
-                    className={`p-1 transition active:scale-90 ${faint}`}
+                    className={`${hitSlopY} rounded-md p-1 transition active:scale-90 ${focusRing} ${faint}`}
                   >
                     <PencilIcon />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSavingMeal(meal)}
                     aria-label={t('Save {name} as a template', { name: meal.name })}
-                    className={`p-1 transition ${saved ? `glow-text ${accentText}` : faint}`}
+                    className={`${hitSlopY} rounded-md p-1 transition active:scale-90 ${focusRing} ${saved ? `glow-text ${accentText}` : faint}`}
                   >
                     <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill={saved ? 'currentColor' : 'none'}
                       stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
@@ -261,15 +310,17 @@ export default function Home({
                     </svg>
                   </button>
                   <button
+                    type="button"
                     onClick={() => onDeleteMeal(meal.id)}
                     aria-label={t('Delete {name}', { name: meal.name })}
-                    className={`px-1 text-xl leading-none ${faint}`}
+                    className={`${hitSlopY} rounded-md p-1 transition active:scale-90 ${focusRing} ${faint}`}
                   >
-                    ×
+                    <TrashIcon />
                   </button>
-                </li>
+                </motion.li>
               )
             })}
+            </AnimatePresence>
           </ul>
         )}
       </Card>

@@ -1,6 +1,6 @@
 // Shared building blocks. Every colour is given for light mode first and for
 // dark mode with a `dark:` variant, so the whole app follows the theme toggle.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   animate, motion, useDragControls, useMotionValue, useReducedMotion, useTransform, useVelocity,
@@ -10,14 +10,30 @@ import { t, isRTL } from '../lib/i18n.js'
 
 // ---- Theme-aware class sets (used across screens) -------------------------
 
-export const muted = 'text-zinc-500 dark:text-white/60'
-export const faint = 'text-zinc-400 dark:text-white/40'
+// Contrast on white / on the field fill: muted 7.7 / 7.0, faint 5.3 / 4.8
+// (light); on the dark card / field: muted 7.3 / 6.3, faint 5.3 / 4.8.
+export const muted = 'text-zinc-600 dark:text-white/60'
+export const faint = 'text-subtle dark:text-white/50'
 export const accentText = 'text-royal dark:text-lilac'
 export const carbsText = 'text-carbs-deep dark:text-carbs'
 export const fatText = 'text-fat-deep dark:text-fat'
 export const fieldBg = 'bg-zinc-100 dark:bg-field'
 export const divider = 'divide-black/5 dark:divide-white/10'
-const placeholder = 'placeholder:text-zinc-400 dark:placeholder:text-white/30'
+export const placeholder = 'placeholder:text-subtle dark:placeholder:text-white/50'
+
+/** Keyboard focus ring for buttons and fields (outline-none alone hides focus). */
+export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-royal/60 dark:focus-visible:ring-lilac/70'
+
+/** Grows a small control's tap area to 44 px without changing how it looks.
+ *  Needs no extra markup; the element must not clip its own overflow. */
+export const hitSlop = "relative before:absolute before:-inset-1.5 before:content-['']"
+
+/** Same, but only taller: for icon buttons in a row, where growing sideways
+ *  would run the tap areas of neighbours into each other. */
+export const hitSlopY = "relative before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']"
+
+/** Focus ring for a field row, drawn on the row while its input has focus. */
+export const focusWithin = 'focus-within:ring-2 focus-within:ring-royal/60 dark:focus-within:ring-lilac/70'
 
 /** Liquid Glass edge: the rim highlights of LiquidButton
  *  (components/ui/liquid-glass-button.tsx), for any glass surface. Put it on
@@ -34,24 +50,30 @@ export const glassRim =
  * a backdrop root, so a filter nested inside another one would see nothing.
  * The parent must not have a backdrop-filter of its own.
  */
-export const GlassBackdrop = ({ id = 'nav-glass', scale = 46, freq = '0.012 0.035', className = 'rounded-full' }) => (
-  <>
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 -z-20 backdrop-blur-md backdrop-saturate-150 ${className}`} />
-    <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true">
-      <filter id={id} x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency={freq} numOctaves="2" seed="3" result="noise" />
-        <feGaussianBlur in="noise" stdDeviation="3" result="softNoise" />
-        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale={scale} xChannelSelector="R" yChannelSelector="B" result="warped" />
-        <feGaussianBlur in="warped" stdDeviation="1.2" />
-      </filter>
-    </svg>
-    <div
-      aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 -z-10 ${className}`}
-      style={{ backdropFilter: `url(#${id})` }}
-    />
-  </>
-)
+export const GlassBackdrop = ({ id, scale = 46, freq = '0.012 0.035', className = 'rounded-full' }) => {
+  // One filter id per instance, so two backdrops never share (and clobber) one.
+  const own = 'glass-' + useId().replace(/:/g, '')
+  const filterId = id ?? own
+  // `glass-fx` layers are hidden when the person asks for more contrast (index.css).
+  return (
+    <>
+      <div aria-hidden="true" className={`glass-fx pointer-events-none absolute inset-0 -z-20 backdrop-blur-md backdrop-saturate-150 ${className}`} />
+      <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true">
+        <filter id={filterId} x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency={freq} numOctaves="2" seed="3" result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="3" result="softNoise" />
+          <feDisplacementMap in="SourceGraphic" in2="softNoise" scale={scale} xChannelSelector="R" yChannelSelector="B" result="warped" />
+          <feGaussianBlur in="warped" stdDeviation="1.2" />
+        </filter>
+      </svg>
+      <div
+        aria-hidden="true"
+        className={`glass-fx pointer-events-none absolute inset-0 -z-10 ${className}`}
+        style={{ backdropFilter: `url(#${filterId})` }}
+      />
+    </>
+  )
+}
 
 // ---- Layout ----------------------------------------------------------------
 
@@ -74,12 +96,28 @@ export const PageTitle = ({ children, action }) => (
   </header>
 )
 
+/** Empty list or chart: a soft icon tile, a line of text and, optionally, the
+ *  one action that fills it. `icon` is the inside of a 24 x 24 stroke icon. */
+export const EmptyState = ({ icon, children, action }) => (
+  <div className="flex flex-col items-center gap-3 px-2 py-5 text-center">
+    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-royal/10 dark:bg-royal/20">
+      <svg viewBox="0 0 24 24" className={`h-6 w-6 ${accentText}`} fill="none" stroke="currentColor" strokeWidth="1.8"
+        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {icon}
+      </svg>
+    </span>
+    <p className={`max-w-[18rem] text-sm text-balance ${muted}`}>{children}</p>
+    {action && <div className="w-full pt-1">{action}</div>}
+  </div>
+)
+
 // ---- Inputs ----------------------------------------------------------------
 
 export const PrimaryButton = ({ children, className = '', ...props }) => (
   <button
+    type="button"
     {...props}
-    className={`w-full rounded-2xl bg-linear-to-b from-[#8a63bd] to-royal py-3.5 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_-10px_rgba(120,81,169,0.7)] transition active:scale-[0.98] active:opacity-90 disabled:opacity-35 disabled:shadow-none ${className}`}
+    className={`w-full rounded-2xl bg-linear-to-b from-[#8a63bd] to-royal py-3.5 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_-10px_rgba(120,81,169,0.7)] transition active:scale-[0.98] active:opacity-90 disabled:opacity-35 disabled:shadow-none ${focusRing} ${className}`}
   >
     {children}
   </button>
@@ -88,16 +126,17 @@ export const PrimaryButton = ({ children, className = '', ...props }) => (
 export const TextInput = ({ className = '', ...props }) => (
   <input
     {...props}
-    className={`w-full rounded-xl px-3.5 py-2.5 outline-none transition-colors ${fieldBg} ${placeholder} ${className}`}
+    className={`w-full rounded-xl px-3.5 py-2.5 transition-colors ${focusRing} ${fieldBg} ${placeholder} ${className}`}
   />
 )
 
-/** Labelled input row: "Protein ........ [ 0 ] g". */
+/** Labelled input row: "Protein ........ [ 0 ] g". The row shows the focus ring. */
 export const FieldRow = ({ label, unit, ...input }) => (
-  <label className={`flex items-center rounded-xl px-3.5 py-2.5 transition-colors ${fieldBg}`}>
+  <label className={`flex items-center rounded-xl px-3.5 py-2.5 transition-colors ${focusWithin} ${fieldBg}`}>
     <span className="flex-1">{label}</span>
     <input
       inputMode="decimal"
+      autoComplete="off"
       {...input}
       className={`w-24 bg-transparent text-end tabular-nums outline-none ${placeholder}`}
     />
@@ -107,12 +146,14 @@ export const FieldRow = ({ label, unit, ...input }) => (
 
 /** iOS-style segmented control. Options are English keys, shown translated. */
 export const Segmented = ({ options, value, onChange }) => (
-  <div className={`flex rounded-xl p-1 ${fieldBg}`}>
+  <div role="group" className={`flex rounded-xl p-1 ${fieldBg}`}>
     {options.map((option) => (
       <button
         key={option}
+        type="button"
+        aria-pressed={value === option}
         onClick={() => onChange(option)}
-        className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition ${
+        className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition ${focusRing} ${
           value === option ? 'bg-royal text-white shadow-sm' : muted
         }`}
       >
@@ -225,7 +266,7 @@ export function GlassSwitch({ value, onChange, left, right, label }) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      className="relative isolate my-1 shrink-0 touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-royal/60"
+      className={`relative isolate my-1 shrink-0 touch-none select-none rounded-full before:absolute before:-inset-x-1 before:-inset-y-2 before:content-[''] ${focusRing}`}
       style={{ width: SW.T, height: SW.H }}
       data-no-swipe
     >
@@ -268,9 +309,10 @@ export function GlassSwitch({ value, onChange, left, right, label }) {
 /** Round "+" used to add an item to a meal. */
 export const AddButton = ({ onClick, label }) => (
   <button
+    type="button"
     onClick={onClick}
     aria-label={label}
-    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-lg leading-none text-white transition active:scale-90"
+    className={`${hitSlop} flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-lg leading-none text-white transition active:scale-90 ${focusRing}`}
   >
     +
   </button>
@@ -280,17 +322,19 @@ export const AddButton = ({ onClick, label }) => (
 export const Stepper = ({ value, onMinus, onPlus, label }) => (
   <div className="flex shrink-0 items-center rounded-full bg-royal/10 dark:bg-royal/25">
     <button
+      type="button"
       onClick={onMinus}
       aria-label={t('Less {name}', { name: label })}
-      className={`flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none transition active:scale-90 ${accentText}`}
+      className={`${hitSlop} flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none transition active:scale-90 ${focusRing} ${accentText}`}
     >
       −
     </button>
     <span className="min-w-12 text-center text-xs font-semibold tabular-nums">{value}</span>
     <button
+      type="button"
       onClick={onPlus}
       aria-label={t('More {name}', { name: label })}
-      className="flex h-8 w-8 items-center justify-center rounded-full bg-royal text-lg leading-none text-white transition active:scale-90"
+      className={`${hitSlop} flex h-8 w-8 items-center justify-center rounded-full bg-royal text-lg leading-none text-white transition active:scale-90 ${focusRing}`}
     >
       +
     </button>
@@ -371,15 +415,15 @@ export function CalorieRing({ progress, remaining }) {
         </defs>
         <circle cx="95" cy="95" r={r} fill="none" stroke="#7851a9" strokeOpacity=".18" strokeWidth="16" />
         <circle
+          className="ring-anim"
           filter="url(#ring-glow)"
           cx="95" cy="95" r={r} fill="none" stroke="url(#ring)" strokeWidth="16" strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - progress)}
-          style={{ transition: 'stroke-dashoffset .6s ease-out' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold tabular-nums">{fmt0(Math.abs(remaining))}</span>
+        <span className="text-4xl font-bold tracking-tight tabular-nums">{fmt0(Math.abs(remaining))}</span>
         <span className={`text-sm ${remaining >= 0 ? muted : fatText}`}>
           {t(remaining >= 0 ? 'kcal left' : 'kcal over')}
         </span>
@@ -394,7 +438,7 @@ export function MiniRing({ label, value, goal, color }) {
   const r = 34
   const c = 2 * Math.PI * r
   const progress = goal > 0 ? Math.min(Math.max(value / goal, 0), 1) : 0
-  const id = `mini-glow-${label}`
+  const id = 'mini-glow-' + useId().replace(/:/g, '') // unique per ring; translated labels make poor ids
   return (
     <div className="flex flex-col items-center">
       <div className="relative" style={{ width: size, height: size }}>
@@ -402,16 +446,16 @@ export function MiniRing({ label, value, goal, color }) {
           <defs><GlowFilter id={id} extent={size} blur={3.5} /></defs>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeOpacity=".18" strokeWidth="8" />
           <circle
+            className="ring-anim"
             filter={`url(#${id})`}
             cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - progress)}
-            style={{ transition: 'stroke-dashoffset .6s ease-out' }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center leading-tight">
           <span className="text-base font-bold tabular-nums">{fmt0(value)}</span>
-          <span className={`text-[10px] tabular-nums ${muted}`}>/ {fmt0(goal)} {t('g')}</span>
+          <span className={`text-[11px] tabular-nums ${muted}`}>/ {fmt0(goal)}&nbsp;{t('g')}</span>
         </div>
       </div>
       <span className={`mt-2 text-xs font-medium ${muted}`}>{label}</span>
@@ -448,6 +492,80 @@ export const MacroSummary = ({ macros, glow = false }) => {
 // it as soon as the remaining movement is invisible, instead of crawling.
 export const SPRING = { type: 'spring', stiffness: 520, damping: 48, mass: 1, restDelta: 0.5, restSpeed: 10 }
 
+/** Where a flick would come to rest: current + (v / 1000) * rate / (1 - rate),
+ *  the same exponential-decay projection scroll views use. `v` is in px/s. */
+export const project = (v, rate = 0.99) => ((v / 1000) * rate) / (1 - rate)
+
+/**
+ * Motion props for a list row (`motion.li`) inside
+ * `<AnimatePresence initial={false} mode="popLayout">`: a new row eases in, a
+ * deleted row fades out and the rows below close the gap with a spring. Under
+ * Reduce Motion rows only fade. (SPRING's restDelta is in pixels, so opacity
+ * and scale get their own transitions.)
+ */
+export function useRowMotion() {
+  const reduce = useReducedMotion()
+  if (reduce) return { exit: { opacity: 0 }, transition: { duration: 0.15 } }
+  return {
+    layout: 'position',
+    initial: { opacity: 0, scale: 0.96 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.96 },
+    transition: { layout: SPRING, default: { type: 'spring', stiffness: 520, damping: 48 }, opacity: { duration: 0.18 } },
+  }
+}
+
+/**
+ * Layers (sheets and dialogs) that are open, topmost last. Only the topmost
+ * reacts to Escape and keeps Tab inside itself, so a dialog opened over a
+ * sheet is closed first.
+ */
+const layers = []
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Keyboard and screen-reader behaviour of a modal layer: Escape calls
+ * `onClose`, Tab stays inside `ref`, focus moves in when it opens (to the
+ * first field or button) and goes back to what had it when it closes.
+ */
+function useModalLayer(ref, onClose) {
+  const close = useRef(onClose)
+  close.current = onClose
+
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return undefined
+    const opener = document.activeElement
+    const layer = {}
+    layers.push(layer)
+
+    const focusables = () => [...root.querySelectorAll(FOCUSABLE)].filter((el) => el.getClientRects().length > 0)
+    ;(focusables()[0] ?? root).focus({ preventScroll: true })
+
+    const onKey = (e) => {
+      if (layers[layers.length - 1] !== layer) return
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        close.current?.()
+      } else if (e.key === 'Tab') {
+        const list = focusables()
+        if (list.length === 0) { e.preventDefault(); return }
+        const first = list[0]
+        const last = list[list.length - 1]
+        if (!root.contains(document.activeElement)) { e.preventDefault(); first.focus() }
+        else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      layers.splice(layers.indexOf(layer), 1)
+      if (opener?.isConnected) opener.focus({ preventScroll: true })
+    }
+  }, [ref])
+}
+
 /**
  * Full-screen sheet driven by framer-motion springs. Two variants:
  *
@@ -460,38 +578,54 @@ export const SPRING = { type: 'spring', stiffness: 520, damping: 48, mass: 1, re
  * parent stops rendering it. The position is ONE motion value (`pos`), and the
  * backdrop opacity is derived from it, so the dim follows the sheet with no
  * React renders while dragging.
+ *
+ * `dirty`: the sheet holds unsaved edits. Closing it by swipe, Escape or a tap
+ * on the backdrop then asks "Discard Changes?" first; the Cancel button always
+ * closes straight away.
  */
-export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel = 'Cancel', variant = 'push' }) {
+export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel = 'Cancel', variant = 'push', dirty = false }) {
   const modal = variant === 'modal'
   const side = isRTL() ? -1 : 1                         // push pages come from the left in right-to-left
   const reduce = useReducedMotion()
   const controls = useDragControls()
-  const W = window.innerWidth 
-  const H = window.innerHeight
+  const root = useRef(null)
+  const [discarding, setDiscarding] = useState(false)
+  const [{ W, H }, setSize] = useState(() => ({ W: window.innerWidth, H: window.innerHeight }))
+  useEffect(() => {                                     // keep the slide distances right after a rotation
+    const onResize = () => setSize({ W: window.innerWidth, H: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const off = modal ? H : W * side
   const pos = useMotionValue(off)                       // starts off-screen, animates to 0
   const scrim = useTransform(pos, (p) => 1 - Math.min(Math.max(p / off, 0), 1)) // dim fades as the sheet leaves
   const transition = reduce ? { duration: 0 } : SPRING
 
+  const requestClose = () => (dirty ? setDiscarding(true) : onClose())
+  useModalLayer(root, requestClose)
+
   const release = (_, info) => {
     const d = modal ? info.offset.y : info.offset.x * side
     const v = modal ? info.velocity.y : info.velocity.x * side // px/s, towards closing
-    if (d > Math.abs(off) * (modal ? 0.25 : 0.33) || v > 600) onClose()
+    // Judge by where the flick is heading, not only where the finger let go.
+    if (d + project(v) > Math.abs(off) * (modal ? 0.25 : 0.33) || v > 600) requestClose()
   }
 
   return (
-    <div className={`fixed inset-0 ${z}`}>
+    <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={`fixed inset-0 outline-none ${z}`}>
       <motion.div
         className="absolute inset-0 bg-black/45"
         style={{ opacity: scrim }}
-        onClick={modal ? onClose : undefined}
+        onClick={modal ? requestClose : undefined}
         aria-hidden="true"
       />
       <motion.div
         className={`absolute flex flex-col overflow-hidden text-zinc-900 will-change-transform dark:text-white ${
           modal
-            // Frosted: the page behind shows faintly through the sheet.
-            ? 'inset-x-0 bottom-0 rounded-t-[28px] bg-canvas/70 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/5 backdrop-blur-2xl backdrop-saturate-150 dark:bg-black/30 dark:ring-white/10'
+            // Frosted: the page behind shows only as a tint. A 24 px blur (not 40)
+            // keeps the slide-in cheap: this layer re-blurs everything under it
+            // on every frame it moves.
+            ? 'glass-surface inset-x-0 bottom-0 rounded-t-[28px] bg-canvas/85 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/5 backdrop-blur-xl backdrop-saturate-150 dark:bg-black/60 dark:ring-white/10'
             : `bg-canvas dark:bg-black inset-0 ${side > 0 ? 'shadow-[-12px_0_32px_rgba(0,0,0,0.25)]' : 'shadow-[12px_0_32px_rgba(0,0,0,0.25)]'}`
         }`}
         // A bottom sheet stops short of the top so the page behind peeks out.
@@ -518,8 +652,8 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
         >
           {modal && <div className="mx-auto mt-2 mb-1 h-1 w-9 rounded-full bg-black/15 dark:bg-white/25" />}
           <div className={`flex items-center justify-between px-4 pb-3 ${modal ? 'pt-1.5' : ''}`}>
-            <button onClick={onClose} className={`w-16 text-start ${accentText}`}>{t(closeLabel)}</button>
-            <h1 className="font-semibold">{title}</h1>
+            <button type="button" onClick={onClose} className={`min-h-11 w-16 rounded-lg text-start ${focusRing} ${accentText}`}>{t(closeLabel)}</button>
+            <h2 className="font-semibold">{title}</h2>
             <div className="w-16 text-end">{action}</div>
           </div>
         </header>
@@ -530,7 +664,7 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
         {!modal && (
           <div
             className="absolute bottom-0 start-0 z-10 w-5"
-            style={{ top: 'calc(env(safe-area-inset-top) + 60px)', touchAction: 'none' }}
+            style={{ top: 'calc(env(safe-area-inset-top) + 72px)', touchAction: 'none' }}
             onPointerDown={(e) => controls.start(e)}
           />
         )}
@@ -542,6 +676,18 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
           {children}
         </div>
       </motion.div>
+
+      {discarding && (
+        <ConfirmDialog
+          destructive
+          title={t('Discard Changes?')}
+          message={t('Your changes will be lost.')}
+          confirmLabel={t('Discard')}
+          cancelLabel={t('Keep Editing')}
+          onCancel={() => setDiscarding(false)}
+          onConfirm={onClose}
+        />
+      )}
     </div>
   )
 }
@@ -552,34 +698,48 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
 // but the first would land off-screen. React events still bubble from the
 // portal to the tab pager, so data-no-swipe keeps drags in a dialog from
 // switching tabs.
-const DialogShell = ({ title, onCancel, children, as: Tag = 'div', ...rest }) => createPortal(
-  <div
-    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm dark:bg-black/70"
-    role="dialog" aria-modal="true" aria-label={title}
-    data-no-swipe
-
-    onClick={onCancel}
-  >
-    <Tag
-      {...rest}
-      className="w-full max-w-xs rounded-3xl border border-black/5 bg-white p-5 text-center text-zinc-900 dark:border-white/10 dark:bg-card dark:text-white"
-      onClick={(e) => e.stopPropagation()}
+const DialogShell = ({ title, onCancel, children, as: Tag = 'div', ...rest }) => {
+  const root = useRef(null)
+  useModalLayer(root, onCancel)
+  return createPortal(
+    <div
+      ref={root}
+      tabIndex={-1}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 outline-none backdrop-blur-sm dark:bg-black/70"
+      role="dialog" aria-modal="true" aria-label={title}
+      data-no-swipe
+      onClick={onCancel}
     >
-      {children}
-    </Tag>
-  </div>,
-  document.body,
-)
+      <Tag
+        {...rest}
+        className="w-full max-w-xs rounded-3xl border border-black/5 bg-white p-5 text-center text-zinc-900 dark:border-white/10 dark:bg-card dark:text-white"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </Tag>
+    </div>,
+    document.body,
+  )
+}
 
-/** Centered confirmation dialog. Cancel is the safe, default-looking choice. */
-export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }) {
+/**
+ * Centered confirmation dialog. Cancel is the safe choice and takes focus first.
+ * `destructive` paints the confirm button red, for an action that throws data
+ * away in a way the person may not expect (a restore, discarding edits).
+ */
+export function ConfirmDialog({ title, message, confirmLabel, cancelLabel, destructive = false, onConfirm, onCancel }) {
   return (
     <DialogShell title={title} onCancel={onCancel}>
       <h2 className="text-[17px] font-semibold">{title}</h2>
       <p className={`mt-2 text-sm ${muted}`}>{message}</p>
       <div className="mt-5 flex gap-3">
-        <button onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${fieldBg}`}>{t('Cancel')}</button>
-        <button onClick={onConfirm} className="flex-1 rounded-2xl bg-royal py-3 font-semibold text-white">{confirmLabel}</button>
+        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${focusRing} ${fieldBg}`}>{cancelLabel ?? t('Cancel')}</button>
+        <button
+          type="button" onClick={onConfirm}
+          className={`flex-1 rounded-2xl py-3 font-semibold text-white ${focusRing} ${destructive ? 'bg-danger' : 'bg-royal'}`}
+        >
+          {confirmLabel}
+        </button>
       </div>
     </DialogShell>
   )
@@ -597,12 +757,12 @@ export function NameDialog({ title, message, initial = '', confirmLabel, placeho
       <h2 className="text-[17px] font-semibold">{title}</h2>
       {message && <p className={`mt-2 text-sm ${muted}`}>{message}</p>}
       <TextInput
-        value={name} onChange={(e) => setName(e.target.value)}
+        value={name} onChange={(e) => setName(e.target.value)} autoComplete="off"
         placeholder={placeholder ?? t('Template name')} aria-label={placeholder ?? t('Template name')} className="mt-4"
       />
       <div className="mt-4 flex gap-3">
-        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${fieldBg}`}>{t('Cancel')}</button>
-        <button type="submit" disabled={!trimmed} className="flex-1 rounded-2xl bg-royal py-3 font-semibold text-white disabled:opacity-35">
+        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${focusRing} ${fieldBg}`}>{t('Cancel')}</button>
+        <button type="submit" disabled={!trimmed} className={`flex-1 rounded-2xl bg-royal py-3 font-semibold text-white disabled:opacity-35 ${focusRing}`}>
           {confirmLabel}
         </button>
       </div>

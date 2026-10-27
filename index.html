@@ -21,10 +21,12 @@
     <title>KiBase</title>
 
     <!-- Apply the saved theme before the first paint so there is no flash.
-         Dark is the default. -->
+         "system" (the default) follows the device's light / dark setting. -->
     <script>
       try {
-        if (JSON.parse(localStorage.getItem("mt.theme") || "\"dark\"") === "dark") document.documentElement.classList.add("dark")
+        var theme = JSON.parse(localStorage.getItem("mt.theme") || "\"system\"")
+        var dark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        if (dark) document.documentElement.classList.add("dark")
       } catch (e) { document.documentElement.classList.add("dark") }
     </script>
   </head>

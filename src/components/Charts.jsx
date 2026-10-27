@@ -110,7 +110,7 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
         <rect
           key={`hit-${d.key}`}
           x={LEFT + slot * i} y={0} width={slot} height={H} fill="transparent"
-          role="button" tabIndex={0} style={{ cursor: 'pointer', outline: 'none' }}
+          className="chart-hit" role="button" tabIndex={0} style={{ cursor: 'pointer' }}
           aria-label={`${d.label}: ${fmt0(d.value)} ${t('kcal')}${d.cheat ? `, ${t('Cheat Day')}` : ''}`}
           aria-pressed={d.key === selected}
           onClick={() => onSelect(d.key)}

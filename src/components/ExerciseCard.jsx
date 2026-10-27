@@ -10,7 +10,7 @@
 //             no history and nothing to tick.
 import { num, fmt0, fmt1 } from '../lib/calc.js'
 import { exerciseOf, setText } from '../lib/workouts.js'
-import { Card, muted, faint, accentText, fieldBg } from './ui.jsx'
+import { Card, muted, faint, accentText, fieldBg, focusRing, placeholder } from './ui.jsx'
 import { t } from '../lib/i18n.js'
 
 const CheckIcon = ({ className = 'h-4 w-4' }) => (
@@ -34,7 +34,7 @@ export default function ExerciseCard({
 }) {
   const ex = exerciseOf(entry)
   const grid = planning ? PLAN_GRID : LOG_GRID
-  const input = `w-full rounded-lg px-1.5 py-1.5 text-center tabular-nums outline-none transition-colors ${fieldBg} placeholder:text-zinc-400 dark:placeholder:text-white/30`
+  const input = `w-full rounded-lg px-1.5 py-1.5 text-center tabular-nums transition-colors ${focusRing} ${fieldBg} ${placeholder}`
 
   // Hint for set i: the routine's plan, else the same set last time, else the
   // last set done then.
@@ -97,7 +97,7 @@ export default function ExerciseCard({
                   )}
                   {/* Smaller than the previous value: the heaviest weight ever lifted in this set. */}
                   {best[i] > 0 && (
-                    <span className={`max-w-full truncate text-[10px] tabular-nums ${accentText}`}>
+                    <span className={`max-w-full truncate text-[11px] tabular-nums ${accentText}`}>
                       {t('Best')} {fmt1(best[i])}
                     </span>
                   )}

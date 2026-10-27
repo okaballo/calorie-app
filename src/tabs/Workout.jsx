@@ -22,7 +22,7 @@ import {
   workoutStats,
 } from '../lib/workouts.js'
 import {
-  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, ConfirmDialog, muted, faint, accentText, fieldBg, divider,
+  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, EmptyState, ConfirmDialog, muted, faint, accentText, fieldBg, divider,
 } from '../components/ui.jsx'
 import { LineChart } from '../components/Charts.jsx'
 import OptionMenu from '../components/OptionMenu.jsx'
@@ -144,7 +144,9 @@ export default function Workout({
       <Card className="space-y-3">
         <SectionTitle>{t('Routines')}</SectionTitle>
         {routines.length === 0 ? (
-          <p className={`text-sm ${muted}`}>{t('No routines yet. Build one and start it with one tap whenever you train.')}</p>
+          <EmptyState icon={<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" />}>
+            {t('No routines yet. Build one and start it with one tap whenever you train.')}
+          </EmptyState>
         ) : (
           <ul className={`divide-y ${divider}`}>
             {routines.map((routine) => {
@@ -194,7 +196,9 @@ export default function Workout({
             />
           </div>
           {volume.length === 0 ? (
-            <p className={`py-10 text-center text-sm ${muted}`}>{t('Finish a workout from this routine to see its volume trend.')}</p>
+            <EmptyState icon={<path d="M4 4v16h16M7.5 15l3.5-4 3 2.5L19 8" />}>
+              {t('Finish a workout from this routine to see its volume trend.')}
+            </EmptyState>
           ) : (
             <div className="mt-5">
               <LineChart points={volume} pad={Math.max(peak * 0.1, 5)} format={fmt0} label={t('Volume trend')} />

@@ -1,7 +1,7 @@
 // Edit a saved meal template: rename it, change each ingredient's grams,
 // remove ingredients, or append new ones from the Database / My Items.
 // Opened from the ">" arrow in Log Meal > My Items.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ZERO, add, scale, num, fmt0 } from '../lib/calc.js'
 import { toPicked, toItems } from '../lib/picked.js'
 import {
@@ -15,6 +15,8 @@ export default function TemplateEditSheet({ template, foods, customFoods, templa
   const [name, setName] = useState(template.name)
   const [picked, setPicked] = useState(() => toPicked(template.items))
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const initial = useRef(JSON.stringify({ name, picked }))
+  const dirty = JSON.stringify({ name, picked }) !== initial.current // unsaved edits: closing by swipe asks first
 
   const totals = picked.reduce((sum, p) => add(sum, scale(p.food, num(p.grams))), ZERO)
   const canSave = name.trim() && picked.length > 0 && picked.every((p) => num(p.grams) > 0)
@@ -26,7 +28,7 @@ export default function TemplateEditSheet({ template, foods, customFoods, templa
 
   return (
     <Sheet
-      title={t('Edit Saved Meal')} onClose={onClose} z="z-50"
+      title={t('Edit Saved Meal')} onClose={onClose} dirty={dirty} z="z-50"
       action={<button onClick={save} disabled={!canSave} className={`font-semibold disabled:opacity-35 ${accentText}`}>{t('Save')}</button>}
     >
       <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder={t('Template name')} aria-label={t('Template name')} />

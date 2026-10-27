@@ -2,7 +2,7 @@
 // sets, change each set's planned kg / reps, then Save. Works on a copy, so
 // Cancel leaves the saved routine untouched; Save replaces it (same id).
 // Opened from "Add New Routine" and from a routine's pencil on the Workout tab.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { newEntry, newSet, editEntries, exerciseOf, toRoutine } from '../lib/workouts.js'
 import { PrimaryButton, Sheet, TextInput, ConfirmDialog, muted, accentText } from './ui.jsx'
 import ExerciseCard from './ExerciseCard.jsx'
@@ -15,6 +15,8 @@ export default function RoutineSheet({ routine, onSave, onDelete, onClose }) {
   const [entries, setEntries] = useState(() => (routine ? editEntries(routine) : []))
   const [picker, setPicker] = useState(null)            // null | { replacing: entry | null }
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const initial = useRef(JSON.stringify({ name, entries }))
+  const dirty = JSON.stringify({ name, entries }) !== initial.current // unsaved edits: closing by swipe asks first
 
   const canSave = name.trim() !== '' && entries.length > 0
 
@@ -35,7 +37,7 @@ export default function RoutineSheet({ routine, onSave, onDelete, onClose }) {
 
   return (
     <Sheet
-      title={t(editing ? 'Edit Routine' : 'New Routine')} onClose={onClose}
+      title={t(editing ? 'Edit Routine' : 'New Routine')} onClose={onClose} dirty={dirty}
       action={<button onClick={save} disabled={!canSave} className={`font-semibold disabled:opacity-35 ${accentText}`}>{t('Save')}</button>}
     >
       <TextInput

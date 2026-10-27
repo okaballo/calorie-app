@@ -20,6 +20,8 @@
   --color-carbs-deep: #5468e0;  /* carbs text on light backgrounds */
   --color-fat: #ed85d9;
   --color-fat-deep: #c2409f;    /* fats text on light backgrounds */
+  --color-subtle: #6b6b75;      /* faint text on light: 5.3:1 on white, 4.8:1 on the field */
+  --color-danger: #d70015;      /* destructive buttons, white text 5.4:1 */
 
   /* San Francisco. SF Pro and SF Arabic are Apple system fonts (their licence
      forbids bundling them), so we reach them through the system font stack:
@@ -62,6 +64,54 @@ body {
 
 /* 16px stops iOS Safari from zooming in when an input is focused. */
 input, select { font-size: 16px; }
+
+/* App-wide defaults. They live in the base layer so any utility class (an
+   `outline-none` plus its own ring, say) still overrides them. */
+:root { --focus-color: var(--color-royal); }
+:root.dark { --focus-color: var(--color-lilac); }
+@layer base {
+  /* Every button, link and role=button shows keyboard focus. */
+  :where(button, a, summary, [role="button"]):focus-visible {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 2px;
+  }
+  /* No 300 ms tap delay or double-tap zoom on controls. */
+  :where(button, a, input, select, textarea, label, summary, [role="button"]) { touch-action: manipulation; }
+  /* Titles break into even lines instead of leaving one word alone. */
+  :where(h1, h2) { text-wrap: balance; }
+}
+
+/* Tap columns of the bar chart: an SVG rect, so focus is drawn as a stroke
+   (browsers differ on outlines for SVG shapes). */
+.chart-hit { outline: none; }
+.chart-hit:focus-visible { stroke: var(--focus-color); stroke-width: 2px; }
+
+/* Progress rings ease to their new value (and jump when motion is reduced). */
+.ring-anim { transition: stroke-dashoffset .6s ease-out; }
+
+/* Reduce Motion: no press-scale on buttons, no ring animation. The
+   !important beats Tailwind's `active:scale-*` utilities. */
+@media (prefers-reduced-motion: reduce) {
+  .ring-anim { transition: none; }
+  button:active, a:active { scale: none !important; }
+}
+
+/* Increase Contrast / Reduce Transparency: glass surfaces become solid and the
+   blur layers behind them are dropped. (prefers-reduced-transparency is only
+   understood by Chromium; prefers-contrast covers iOS Safari.) */
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .glass-fx { display: none; }
+  .glass-surface {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--color-canvas) !important;
+    border: 1px solid rgb(0 0 0 / .25);
+  }
+  .dark .glass-surface {
+    background-color: var(--color-card) !important;
+    border-color: rgb(255 255 255 / .3);
+  }
+}
 
 /* Subtle neon glow for text (dark mode only; on white it just looks blurry).
    The first line is the fallback for browsers without color-mix(). */
