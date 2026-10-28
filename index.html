@@ -18,21 +18,30 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="KiBase" />
 
+    <!-- Inter: the stand-in for SF Pro where it is missing (Windows, Android).
+         Apple devices match SF first and never download the font files. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" />
+
     <title>KiBase</title>
 
     <!-- Apply the saved theme before the first paint so there is no flash.
-         "system" (the default) follows the device's light / dark setting. -->
+         "system" (the default) follows the device's light / dark setting.
+         Neumorphism is English-only for now (Arabic shows it as Light). -->
     <script>
       try {
         var theme = JSON.parse(localStorage.getItem("mt.theme") || "\"system\"")
-        var dark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        var lang = JSON.parse(localStorage.getItem("mt.lang") || "\"en\"")
+        var dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
         if (dark) document.documentElement.classList.add("dark")
+        if (theme === "neumorphism" && lang !== "ar") document.documentElement.classList.add("neu")
       } catch (e) { document.documentElement.classList.add("dark") }
     </script>
-    <script type="module" crossorigin src="/calorie-app/assets/index-Dw5PZcp2.js"></script>
-    <link rel="stylesheet" crossorigin href="/calorie-app/assets/index-A1yZRfQf.css">
+    <script type="module" crossorigin src="/calorie-app/assets/index-Buq7VlIh.js"></script>
+    <link rel="stylesheet" crossorigin href="/calorie-app/assets/index-XozZSLo-.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>
