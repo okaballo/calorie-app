@@ -28,18 +28,19 @@
 
     <!-- Apply the saved theme before the first paint so there is no flash.
          "system" (the default) follows the device's light / dark setting.
-         Neumorphism is English-only for now (Arabic shows it as Light). -->
+         Neumorphism is English-only for now (Arabic shows it as Light, and
+         Dark Neumorphism as plain Dark). -->
     <script>
       try {
         var theme = JSON.parse(localStorage.getItem("mt.theme") || "\"system\"")
         var lang = JSON.parse(localStorage.getItem("mt.lang") || "\"en\"")
-        var dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        var dark = theme === "dark" || theme === "neumorphism-dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
         if (dark) document.documentElement.classList.add("dark")
-        if (theme === "neumorphism" && lang !== "ar") document.documentElement.classList.add("neu")
+        if ((theme === "neumorphism" || theme === "neumorphism-dark") && lang !== "ar") document.documentElement.classList.add("neu")
       } catch (e) { document.documentElement.classList.add("dark") }
     </script>
-    <script type="module" crossorigin src="/calorie-app/assets/index-BFOEu8dw.js"></script>
-    <link rel="stylesheet" crossorigin href="/calorie-app/assets/index-Dh6n6RDu.css">
+    <script type="module" crossorigin src="/calorie-app/assets/index-Dpc_sOsE.js"></script>
+    <link rel="stylesheet" crossorigin href="/calorie-app/assets/index-BwdgnZhm.css">
   </head>
   <body>
     <div id="root"></div>
