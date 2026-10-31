@@ -32,8 +32,8 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
     <svg dir="ltr" viewBox={`0 0 ${W} ${H}`} className="w-full text-zinc-900 dark:text-white" role={onSelect ? 'group' : 'img'} aria-label={label}>
       <defs>
         <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#b58ff2" />
-          <stop offset="1" stopColor="#7851a9" />
+          <stop offset="0" style={{ stopColor: 'var(--color-lilac)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-royal)' }} />
         </linearGradient>
         <linearGradient id="bar-cheat" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#FF3547" />
@@ -146,8 +146,8 @@ export function LineChart({ points, pad = 1.5, format = fmt1, label: ariaLabel =
     <svg dir="ltr" viewBox={`0 0 ${W} ${H}`} className="w-full text-zinc-900 dark:text-white" role="img" aria-label={ariaLabel}>
       <defs>
         <linearGradient id={`area-${uid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#7851a9" stopOpacity=".45" />
-          <stop offset="1" stopColor="#7851a9" stopOpacity="0" />
+          <stop offset="0" style={{ stopColor: 'var(--color-royal)' }} stopOpacity=".45" />
+          <stop offset="1" style={{ stopColor: 'var(--color-royal)' }} stopOpacity="0" />
         </linearGradient>
         {/* Soft neon halo behind the trend line. userSpaceOnUse keeps it
             working even when the line is perfectly flat. */}
@@ -172,8 +172,8 @@ export function LineChart({ points, pad = 1.5, format = fmt1, label: ariaLabel =
 
       <polygon points={area} fill={`url(#area-${uid})`} />
       <g filter={`url(#line-glow-${uid})`}>
-        <polyline points={line} fill="none" stroke="#b58ff2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        {coords.map(([px, py], i) => <circle key={i} cx={px} cy={py} r="3.5" fill="#b58ff2" />)}
+        <polyline points={line} fill="none" style={{ stroke: 'var(--color-lilac)' }} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {coords.map(([px, py], i) => <circle key={i} cx={px} cy={py} r="3.5" style={{ fill: 'var(--color-lilac)' }} />)}
       </g>
 
       <text x={LEFT} y={H - 7} fontSize="10" fill="currentColor" fillOpacity=".6">{label(points[0].date)}</text>

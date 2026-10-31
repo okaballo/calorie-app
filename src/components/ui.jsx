@@ -16,8 +16,12 @@ export const muted = 'text-zinc-600 dark:text-white/60'
 export const faint = 'text-subtle dark:text-white/50'
 export const accentText = 'text-royal dark:text-lilac'
 export const carbsText = 'text-carbs-deep dark:text-carbs'
-export const fatText = 'text-fat-deep dark:text-fat'
-export const fieldBg = 'bg-zinc-100 dark:bg-field'
+// In Neumorphism fat-deep is the red for errors, so the Fats macro text is grey there.
+export const fatText = 'text-fat-deep dark:text-fat neu:text-(--neu-fat)'
+export const fieldBg = 'bg-zinc-100 dark:bg-field neu:bg-canvas neu:shadow-(--neu-inset)'
+/** Secondary button fill: grey like a field, but raised in Neumorphism (a
+ *  recessed button would read as already pressed). */
+export const buttonBg = 'bg-zinc-100 dark:bg-field neu:bg-canvas neu:shadow-(--neu-raised-sm) neu:active:shadow-(--neu-inset)'
 export const divider = 'divide-black/5 dark:divide-white/10'
 export const placeholder = 'placeholder:text-subtle dark:placeholder:text-white/50'
 
@@ -81,7 +85,7 @@ export const GlassBackdrop = ({ id, scale = 46, freq = '0.012 0.035', className 
  *  fill. Dark mode is a deep graphite gradient sitting on OLED black. */
 export const Card = ({ children, className = '' }) => (
   <section
-    className={`rounded-[28px] border-[0.5px] border-black/7 bg-white p-[18px] shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_-16px_rgba(0,0,0,0.12)] transition-colors duration-300 dark:border-white/9 dark:bg-card dark:from-[#141418] dark:to-card dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${className}`}
+    className={`rounded-[28px] border-[0.5px] border-black/7 bg-white p-[18px] shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_-16px_rgba(0,0,0,0.12)] transition-colors duration-300 dark:border-white/9 dark:bg-card dark:from-[#141418] dark:to-card dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised) ${className}`}
   >
     {children}
   </section>
@@ -117,7 +121,7 @@ export const PrimaryButton = ({ children, className = '', ...props }) => (
   <button
     type="button"
     {...props}
-    className={`w-full rounded-2xl bg-linear-to-b from-[#8a63bd] to-royal py-3.5 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_-10px_rgba(120,81,169,0.7)] transition active:scale-[0.98] active:opacity-90 disabled:opacity-35 disabled:shadow-none ${focusRing} ${className}`}
+    className={`w-full rounded-2xl bg-linear-to-b from-[#8a63bd] to-royal py-3.5 font-semibold text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_-10px_rgba(120,81,169,0.7)] transition active:scale-[0.98] active:opacity-90 disabled:opacity-35 disabled:shadow-none neu:bg-none neu:bg-royal neu:shadow-(--neu-raised-sm) neu:active:shadow-[inset_3px_3px_7px_rgba(0,0,0,0.25)] ${focusRing} ${className}`}
   >
     {children}
   </button>
@@ -129,6 +133,30 @@ export const TextInput = ({ className = '', ...props }) => (
     className={`w-full rounded-xl px-3.5 py-2.5 transition-colors ${focusRing} ${fieldBg} ${placeholder} ${className}`}
   />
 )
+
+/** Text field for searching: a small round "×" at the end empties it in one
+ *  tap (and keeps the keyboard up). `className` goes on the wrapper, so it can
+ *  size the field inside a row; `onClear` should set the value to ''. */
+export const SearchInput = ({ value, onChange, onClear, className = '', ...props }) => {
+  const input = useRef(null)
+  return (
+    <div className={`relative ${className}`}>
+      <TextInput ref={input} value={value} onChange={onChange} enterKeyHint="search" className="pe-11" {...props} />
+      {value && (
+        <button
+          type="button"
+          aria-label={t('Clear search')}
+          onClick={() => { onClear(); input.current?.focus() }}
+          className={`absolute end-2.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center text-zinc-900 transition active:scale-90 dark:text-white before:absolute before:-inset-2.5 before:content-[''] ${focusRing}`}
+        >
+          <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
 
 /** Labelled input row: "Protein ........ [ 0 ] g". The row shows the focus ring. */
 export const FieldRow = ({ label, unit, ...input }) => (
@@ -154,12 +182,39 @@ export const Segmented = ({ options, value, onChange }) => (
         aria-pressed={value === option}
         onClick={() => onChange(option)}
         className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition ${focusRing} ${
-          value === option ? 'bg-royal text-white shadow-sm' : muted
+          value === option ? 'bg-royal text-white shadow-sm neu:bg-canvas neu:font-semibold neu:text-royal neu:shadow-(--neu-raised-sm)' : muted
         }`}
       >
         {t(option)}
       </button>
     ))}
+  </div>
+)
+
+/** Small rounded filter pill. */
+export const Chip = ({ active, onClick, children, ...rest }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition active:scale-95 ${focusRing} ${
+      active ? 'bg-royal text-on-accent shadow-sm neu:shadow-(--neu-raised-sm)' : `${buttonBg} ${muted}`
+    }`}
+    {...rest}
+  >
+    {children}
+  </button>
+)
+
+/** Horizontally scrolling row of Chips. `bleed` is the negative margin and
+ *  matching padding that carry the row to the edges of its container (-mx-4
+ *  px-4 for a page, the card's padding inside a card). A scroll container
+ *  clips whatever spills out of it, so in Neumorphism the row gets padding
+ *  for the chips' shadows (and negative margin to keep the layout) and wider
+ *  gaps: each chip reads as its own raised pill. */
+export const ChipRow = ({ label, children, bleed = '-mx-4 px-4' }) => (
+  <div role="group" aria-label={label} className={`${bleed} flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] neu:-my-2.5 neu:gap-3.5 neu:py-4`}>
+    {children}
   </div>
 )
 
@@ -271,7 +326,7 @@ export function GlassSwitch({ value, onChange, left, right, label }) {
       data-no-swipe
     >
       {/* Track: a recessed pill. */}
-      <div className="absolute inset-0 rounded-full bg-black/6 shadow-[inset_0_2px_5px_rgba(0,0,0,0.12),inset_0_-1px_0_rgba(255,255,255,0.6)] dark:bg-black/55 dark:shadow-[inset_0_2px_6px_rgba(0,0,0,0.7),inset_0_-1px_0_rgba(255,255,255,0.06)]" />
+      <div className="absolute inset-0 rounded-full bg-black/6 shadow-[inset_0_2px_5px_rgba(0,0,0,0.12),inset_0_-1px_0_rgba(255,255,255,0.6)] dark:bg-black/55 dark:shadow-[inset_0_2px_6px_rgba(0,0,0,0.7),inset_0_-1px_0_rgba(255,255,255,0.06)] neu:bg-canvas neu:shadow-(--neu-inset)" />
 
       {/* The side the knob has left: its icon, faint. */}
       <motion.span className={slot} style={{ opacity: dimIn, left: SW.P, width: SW.KW }}>
@@ -288,12 +343,12 @@ export function GlassSwitch({ value, onChange, left, right, label }) {
         style={{ x, scaleX, scaleY, width: SW.KW, height: SW.KH, top: (SW.H - SW.KH) / 2 }}
       >
         <motion.div
-          className="absolute inset-0 -z-20 rounded-[14px] bg-white/70 shadow-[0_4px_9px_-3px_rgba(0,0,0,0.3)] backdrop-blur-[3px] dark:bg-white/12 dark:shadow-[0_4px_9px_-2px_rgba(0,0,0,0.8)]"
+          className="absolute inset-0 -z-20 rounded-[14px] bg-white/70 shadow-[0_4px_9px_-3px_rgba(0,0,0,0.3)] backdrop-blur-[3px] dark:bg-white/12 dark:shadow-[0_4px_9px_-2px_rgba(0,0,0,0.8)] neu:bg-canvas neu:shadow-(--neu-raised-sm) neu:backdrop-blur-none"
           style={{ opacity: knobTint }}
         />
-        <div className={`absolute inset-0 rounded-[14px] ${glassRim}`} />
-        <div className="absolute inset-0 rounded-[14px] shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.4),inset_-2px_0_3px_-1px_rgba(237,133,217,0.35)]" />
-        <div className="absolute inset-0 flex items-center justify-center text-zinc-900 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)] dark:text-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.65)]">
+        <div className={`absolute inset-0 rounded-[14px] neu:hidden ${glassRim}`} />
+        <div className="absolute inset-0 rounded-[14px] shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.4),inset_-2px_0_3px_-1px_rgba(237,133,217,0.35)] neu:hidden" />
+        <div className="absolute inset-0 flex items-center justify-center text-zinc-900 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)] dark:text-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.65)] neu:drop-shadow-none">
           <motion.span className="absolute flex items-center justify-center text-[13px] font-bold" style={{ opacity: fadeOut, rotate: turnOut, scale: growOut }}>
             {left.icon}
           </motion.span>
@@ -312,7 +367,7 @@ export const AddButton = ({ onClick, label }) => (
     type="button"
     onClick={onClick}
     aria-label={label}
-    className={`${hitSlop} flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-lg leading-none text-white transition active:scale-90 ${focusRing}`}
+    className={`${hitSlop} flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-lg leading-none text-on-accent transition active:scale-90 ${focusRing}`}
   >
     +
   </button>
@@ -334,7 +389,7 @@ export const Stepper = ({ value, onMinus, onPlus, label }) => (
       type="button"
       onClick={onPlus}
       aria-label={t('More {name}', { name: label })}
-      className={`${hitSlop} flex h-8 w-8 items-center justify-center rounded-full bg-royal text-lg leading-none text-white transition active:scale-90 ${focusRing}`}
+      className={`${hitSlop} flex h-8 w-8 items-center justify-center rounded-full bg-royal text-lg leading-none text-on-accent transition active:scale-90 ${focusRing}`}
     >
       +
     </button>
@@ -408,12 +463,12 @@ export function CalorieRing({ progress, remaining }) {
       <svg viewBox="0 0 190 190" className="-rotate-90 overflow-visible">
         <defs>
           <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#b58ff2" />
-            <stop offset="1" stopColor="#7851a9" />
+            <stop offset="0" style={{ stopColor: 'var(--color-lilac)' }} />
+            <stop offset="1" style={{ stopColor: 'var(--color-royal)' }} />
           </linearGradient>
           <GlowFilter id="ring-glow" extent={190} />
         </defs>
-        <circle cx="95" cy="95" r={r} fill="none" stroke="#7851a9" strokeOpacity=".18" strokeWidth="16" />
+        <circle cx="95" cy="95" r={r} fill="none" style={{ stroke: 'var(--color-royal)' }} strokeOpacity=".18" strokeWidth="16" />
         <circle
           className="ring-anim"
           filter="url(#ring-glow)"
@@ -424,7 +479,7 @@ export function CalorieRing({ progress, remaining }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-4xl font-bold tracking-tight tabular-nums">{fmt0(Math.abs(remaining))}</span>
-        <span className={`text-sm ${remaining >= 0 ? muted : fatText}`}>
+        <span className={`text-sm ${remaining >= 0 ? muted : 'text-fat-deep dark:text-fat'}`}>
           {t(remaining >= 0 ? 'kcal left' : 'kcal over')}
         </span>
       </div>
@@ -444,11 +499,11 @@ export function MiniRing({ label, value, goal, color }) {
       <div className="relative" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90 overflow-visible">
           <defs><GlowFilter id={id} extent={size} blur={3.5} /></defs>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeOpacity=".18" strokeWidth="8" />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: color }} strokeOpacity=".18" strokeWidth="8" />
           <circle
             className="ring-anim"
             filter={`url(#${id})`}
-            cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
+            cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: color }} strokeWidth="8" strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - progress)}
           />
@@ -625,8 +680,8 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
             // Frosted: the page behind shows only as a tint. A 24 px blur (not 40)
             // keeps the slide-in cheap: this layer re-blurs everything under it
             // on every frame it moves.
-            ? 'glass-surface inset-x-0 bottom-0 rounded-t-[28px] bg-canvas/85 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/5 backdrop-blur-xl backdrop-saturate-150 dark:bg-black/60 dark:ring-white/10'
-            : `bg-canvas dark:bg-black inset-0 ${side > 0 ? 'shadow-[-12px_0_32px_rgba(0,0,0,0.25)]' : 'shadow-[12px_0_32px_rgba(0,0,0,0.25)]'}`
+            ? 'glass-surface inset-x-0 bottom-0 rounded-t-[28px] bg-canvas/85 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/5 backdrop-blur-xl backdrop-saturate-150 dark:bg-black/60 dark:ring-white/10 neu:bg-canvas neu:ring-(--neu-edge) neu:backdrop-blur-none'
+            : `bg-canvas dark:bg-black neu:bg-canvas inset-0 ${side > 0 ? 'shadow-[-12px_0_32px_rgba(0,0,0,0.25)]' : 'shadow-[12px_0_32px_rgba(0,0,0,0.25)]'}`
         }`}
         // A bottom sheet stops short of the top so the page behind peeks out.
         style={modal ? { y: pos, top: 'calc(env(safe-area-inset-top) + 10px)' } : { x: pos }}
@@ -705,14 +760,14 @@ const DialogShell = ({ title, onCancel, children, as: Tag = 'div', ...rest }) =>
     <div
       ref={root}
       tabIndex={-1}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 outline-none backdrop-blur-sm dark:bg-black/70"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6 outline-none backdrop-blur-sm dark:bg-black/70 neu:bg-(--neu-scrim) neu:backdrop-blur-none"
       role="dialog" aria-modal="true" aria-label={title}
       data-no-swipe
       onClick={onCancel}
     >
       <Tag
         {...rest}
-        className="w-full max-w-xs rounded-3xl border border-black/5 bg-white p-5 text-center text-zinc-900 dark:border-white/10 dark:bg-card dark:text-white"
+        className="w-full max-w-xs rounded-3xl border border-black/5 bg-white p-5 text-center text-zinc-900 dark:border-white/10 dark:bg-card dark:text-white neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised)"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -733,10 +788,10 @@ export function ConfirmDialog({ title, message, confirmLabel, cancelLabel, destr
       <h2 className="text-[17px] font-semibold">{title}</h2>
       <p className={`mt-2 text-sm ${muted}`}>{message}</p>
       <div className="mt-5 flex gap-3">
-        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${focusRing} ${fieldBg}`}>{cancelLabel ?? t('Cancel')}</button>
+        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${focusRing} ${buttonBg}`}>{cancelLabel ?? t('Cancel')}</button>
         <button
           type="button" onClick={onConfirm}
-          className={`flex-1 rounded-2xl py-3 font-semibold text-white ${focusRing} ${destructive ? 'bg-danger' : 'bg-royal'}`}
+          className={`flex-1 rounded-2xl py-3 font-semibold ${focusRing} ${destructive ? 'bg-danger text-white' : 'bg-royal text-on-accent'}`}
         >
           {confirmLabel}
         </button>
@@ -761,8 +816,8 @@ export function NameDialog({ title, message, initial = '', confirmLabel, placeho
         placeholder={placeholder ?? t('Template name')} aria-label={placeholder ?? t('Template name')} className="mt-4"
       />
       <div className="mt-4 flex gap-3">
-        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${focusRing} ${fieldBg}`}>{t('Cancel')}</button>
-        <button type="submit" disabled={!trimmed} className={`flex-1 rounded-2xl bg-royal py-3 font-semibold text-white disabled:opacity-35 ${focusRing}`}>
+        <button type="button" onClick={onCancel} className={`flex-1 rounded-2xl py-3 font-medium ${focusRing} ${buttonBg}`}>{t('Cancel')}</button>
+        <button type="submit" disabled={!trimmed} className={`flex-1 rounded-2xl bg-royal py-3 font-semibold text-on-accent disabled:opacity-35 ${focusRing}`}>
           {confirmLabel}
         </button>
       </div>

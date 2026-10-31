@@ -78,7 +78,7 @@ function DayDetails({ dayKey, meals, activeDay, cheat, onToggleCheat, onDeleteDa
         className={`w-full rounded-2xl py-3 text-sm font-semibold transition active:opacity-80 ${
           cheat
             ? 'border border-[#6A95D6]/50 text-[#4d7bc2] dark:text-[#8fb2e6]'
-            : 'bg-gradient-to-r from-[#FF3547] to-[#6039AA] text-white shadow-[0_2px_12px_rgba(255,53,71,0.3)]'
+            : 'bg-gradient-to-r from-[#FF3547] to-[#6039AA] text-white shadow-[0_2px_12px_rgba(255,53,71,0.3)] neu:shadow-(--neu-raised-sm)'
         }`}
       >
         {t(cheat ? 'Unmark Cheat Day' : 'Mark as Cheat Day')}

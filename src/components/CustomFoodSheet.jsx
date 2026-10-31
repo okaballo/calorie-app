@@ -49,9 +49,9 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
   }
 
   return (
-    <Sheet title={t(editing ? 'Edit Custom Item' : 'Custom Meal')} onClose={onClose} dirty={dirty} z="z-50">
+    <Sheet title={t(editing ? 'Edit Custom Item' : 'Custom food')} onClose={onClose} dirty={dirty} z="z-50">
       <Card className="space-y-3.5">
-        <SectionTitle>{editing ? t(food.name) : t('Create a custom meal')}</SectionTitle>
+        <SectionTitle>{editing ? t(food.name) : t('Add new food')}</SectionTitle>
         <p className={`text-[13px] ${muted}`}>
           {t('Enter the values for the amount below (100 g by default). When you log it later you only type the grams.')}
         </p>
@@ -70,7 +70,7 @@ export default function CustomFoodSheet({ food, onSave, onDelete, onClose }) {
         <p className={`text-xs ${muted}`}>{t('Optional. Logging this item starts at one portion instead of 100 g.')}</p>
       </Card>
 
-      <PrimaryButton onClick={save} disabled={!canSave}>{t(editing ? 'Save Changes' : 'Save Custom Meal')}</PrimaryButton>
+      <PrimaryButton onClick={save} disabled={!canSave}>{t(editing ? 'Save Changes' : 'Save Custom food')}</PrimaryButton>
       {editing && (
         <button onClick={() => setConfirmDelete(true)} className="w-full py-2 text-sm font-medium text-fat-deep dark:text-fat">
           {t('Delete item')}

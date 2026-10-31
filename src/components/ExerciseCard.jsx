@@ -10,7 +10,7 @@
 //             no history and nothing to tick.
 import { num, fmt0, fmt1 } from '../lib/calc.js'
 import { exerciseOf, setText } from '../lib/workouts.js'
-import { Card, muted, faint, accentText, fieldBg, focusRing, placeholder } from './ui.jsx'
+import { Card, muted, faint, accentText, fieldBg, buttonBg, focusRing, placeholder } from './ui.jsx'
 import { t } from '../lib/i18n.js'
 
 const CheckIcon = ({ className = 'h-4 w-4' }) => (
@@ -119,7 +119,7 @@ export default function ExerciseCard({
                   aria-pressed={set.done}
                   aria-label={t('Set {n} done', { n: i + 1 })}
                   className={`mx-auto flex size-7 items-center justify-center rounded-full transition active:scale-90 ${
-                    set.done ? 'bg-royal text-white shadow-[0_0_12px_-2px_rgba(120,81,169,0.7)]' : 'border-2 border-zinc-300 text-transparent dark:border-zinc-600'
+                    set.done ? 'bg-royal text-on-accent shadow-[0_0_12px_-2px_rgba(120,81,169,0.7)] neu:shadow-(--neu-raised-sm)' : 'border-2 border-zinc-300 text-transparent dark:border-zinc-600'
                   }`}
                 >
                   <CheckIcon className="h-3.5 w-3.5" />
@@ -139,7 +139,7 @@ export default function ExerciseCard({
 
       <button
         onClick={onAddSet}
-        className={`w-full rounded-xl py-2 text-sm font-semibold transition active:scale-[0.98] ${fieldBg} ${accentText}`}
+        className={`w-full rounded-xl py-2 text-sm font-semibold transition active:scale-[0.98] ${buttonBg} ${accentText}`}
       >
         + {t('Add Set')}
       </button>

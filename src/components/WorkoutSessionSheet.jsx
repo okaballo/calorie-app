@@ -140,7 +140,7 @@ export default function WorkoutSessionSheet({
         <>
           <button
             onClick={finish}
-            className="w-full rounded-2xl border-[0.5px] border-black/10 bg-white py-3.5 font-semibold transition active:scale-[0.98] active:bg-black/5 dark:border-white/12 dark:bg-white/4 dark:active:bg-white/8"
+            className="w-full rounded-2xl border-[0.5px] border-black/10 bg-white py-3.5 font-semibold transition active:scale-[0.98] active:bg-black/5 dark:border-white/12 dark:bg-white/4 dark:active:bg-white/8 neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised-sm) neu:active:bg-canvas neu:active:shadow-(--neu-inset)"
           >
             {t('Finish Routine')}
           </button>

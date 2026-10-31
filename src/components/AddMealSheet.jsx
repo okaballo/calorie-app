@@ -26,7 +26,7 @@ export const ToolButton = ({ onClick, icon, children }) => (
 )
 
 export default function AddMealSheet({
-  foods, customFoods, templates, onSave, onClose, onCreateCustom, onEditCustom, onEditTemplate, onOpenDivider, meal,
+  foods, customFoods, templates, onSave, onClose, onCreateCustom, onCreateMeal, onEditCustom, onEditTemplate, onAddToMyItems, meal,
 }) {
   const editing = Boolean(meal)
   const [name, setName] = useState(meal?.name ?? '')
@@ -98,11 +98,11 @@ export default function AddMealSheet({
         <FoodPicker
           foods={foods} customFoods={customFoods} templates={templates}
           picked={picked} setPicked={setPicked}
-          onEditCustom={onEditCustom} onEditTemplate={onEditTemplate}
+          onEditCustom={onEditCustom} onEditTemplate={onEditTemplate} onAddToMyItems={onAddToMyItems}
           actions={
             <div className="grid grid-cols-2 gap-2">
-              <ToolButton onClick={onCreateCustom} icon="+">{t('Create a custom meal')}</ToolButton>
-              <ToolButton onClick={onOpenDivider} icon="÷">{t('Meal Divider')}</ToolButton>
+              <ToolButton onClick={onCreateCustom} icon="+">{t('Create a custom food')}</ToolButton>
+              <ToolButton onClick={onCreateMeal} icon="+">{t('Create a new meal')}</ToolButton>
             </div>
           }
         />

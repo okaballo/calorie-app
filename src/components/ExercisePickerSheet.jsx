@@ -12,28 +12,8 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence } from 'framer-motion'
 import { MUSCLES, EQUIPMENT, filterExercises, findAlternatives } from '../lib/exercisesDB.ts'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
-import { Sheet, TextInput, AddButton, muted, faint, accentText, fieldBg, divider } from './ui.jsx'
+import { Sheet, SearchInput, AddButton, Chip, ChipRow, muted, faint, accentText, divider } from './ui.jsx'
 import { t } from '../lib/i18n.js'
-
-/** Small rounded filter chip. */
-const Chip = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    aria-pressed={active}
-    className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition active:scale-95 ${
-      active ? 'bg-royal text-white shadow-sm' : `${fieldBg} ${muted}`
-    }`}
-  >
-    {children}
-  </button>
-)
-
-/** Horizontally scrolling row of chips (bleeds to the sheet edges). */
-const ChipRow = ({ label, children }) => (
-  <div role="group" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
-    {children}
-  </div>
-)
 
 const CheckIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3"
@@ -99,8 +79,8 @@ export default function ExercisePickerSheet({ replacing = null, onPick, onClose 
         </p>
       )}
 
-      <TextInput
-        value={query} onChange={(e) => setQuery(e.target.value)} autoCorrect="off"
+      <SearchInput
+        value={query} onChange={(e) => setQuery(e.target.value)} onClear={() => setQuery('')} autoCorrect="off"
         placeholder={t('Search exercises')} aria-label={t('Search exercises')}
       />
 
@@ -151,7 +131,7 @@ export default function ExercisePickerSheet({ replacing = null, onPick, onClose 
                 <button
                   onClick={() => toggle(ex)}
                   aria-label={t('Remove {name}', { name: ex.name })}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-white transition active:scale-90"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-on-accent transition active:scale-90"
                 >
                   <CheckIcon />
                 </button>

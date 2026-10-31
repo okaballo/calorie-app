@@ -4,6 +4,11 @@
    every `dark:` variant obeys the in-app toggle rather than the OS setting. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Neumorphism follows a "neu" class on <html> (together with "dark" for the
+   dark version): `neu:` variants restyle surfaces, the tokens below recolour
+   the rest. */
+@custom-variant neu (&:where(.neu, .neu *));
+
 /* Design tokens. Royal Purple is the accent in both themes. */
 @theme {
   --color-royal: #7851a9;       /* Royal Purple */
@@ -22,18 +27,142 @@
   --color-fat-deep: #c2409f;    /* fats text on light backgrounds */
   --color-subtle: #6b6b75;      /* faint text on light: 5.3:1 on white, 4.8:1 on the field */
   --color-danger: #d70015;      /* destructive buttons, white text 5.4:1 */
+  --color-on-accent: #ffffff;   /* text on a Royal Purple fill (dark ink in dark Neumorphism) */
 
   /* San Francisco. SF Pro and SF Arabic are Apple system fonts (their licence
      forbids bundling them), so we reach them through the system font stack:
      -apple-system is SF Pro on iOS / macOS and falls back to SF Arabic for
-     Arabic text on its own. The named entries cover installed copies. */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", system-ui, sans-serif;
+     Arabic text on its own. The named entries cover installed copies.
+     Inter (loaded in index.html) stands in on Windows and Android, where SF
+     is missing; Apple devices never download it. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Inter", system-ui, sans-serif;
   --font-arabic: "SF Arabic", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
 html, body, #root { height: 100%; }
 :root { color-scheme: light; }
 :root.dark { color-scheme: dark; }
+
+/* Chart and ring colours. SVG paints them through `style`, so each theme can
+   swap them here (presentation attributes can't read CSS variables). */
+:root {
+  --ring-protein: #9b6fe0;
+  --ring-carbs: #8c9eff;
+  --ring-fat: #ed85d9;
+}
+
+/* ---- Neumorphism ------------------------------------------------------------
+   Every surface is the page colour, shaped only by a highlight (top left) and
+   a shadow (bottom right): raised for cards and buttons, inset for fields and
+   tracks. No glow, no blur. It comes in a light and a dark version, one class
+   each on <html>: light is `neu`, dark is `neu` plus `dark` (so the `dark:`
+   variants keep doing the text, and `neu:` restyles the surfaces).
+
+   Monochrome: the accent (the royal token) is the ink itself, and its second
+   shade (lilac) a grey, so buttons, rings and charts are black, white and
+   greys. `--color-on-accent` is the text that sits on an accent fill. The one
+   colour left is a soft red for destructive actions and errors (the
+   fat-deep and danger tokens).
+
+   Light, contrast on the #e4e8ee surface: ink 10.9:1, white on ink 13.4:1,
+   muted 6.3:1, faint 5.3:1, red 4.9:1, white on red 6.0:1.
+   Dark, on the #25282f surface: white 14.8:1, muted (60%) 6.3:1, faint (50%)
+   4.9:1, accent #e6e9f0 12.1:1, dark ink on the #c8ceda accent 11.3:1,
+   red #e08a85 5.7:1, white on the #c0524e danger fill 4.6:1. */
+:root.neu {
+  --neu-raised: 8px 8px 18px var(--neu-dark), -8px -8px 18px var(--neu-light);
+  --neu-raised-sm: 4px 4px 10px var(--neu-dark), -4px -4px 10px var(--neu-light);
+  --neu-inset: inset 3px 3px 7px var(--neu-dark), inset -3px -3px 7px var(--neu-light);
+}
+
+/* Light. The zinc scale (text, borders and icons everywhere) is re-tinted
+   toward slate so neutral greys match the cool surface. */
+:root.neu:not(.dark) {
+  color-scheme: light;
+  --color-canvas: #e4e8ee;
+  --color-royal: #2a2f3d;
+  --color-lilac: #6b7285;
+  --color-primary: #2a2f3d;
+  --color-ring: #2a2f3d;
+  --color-subtle: #575e72;
+  --color-carbs-deep: #4b5266;
+  --color-fat-deep: #a8423f;
+  --color-danger: #a8423f;
+  --color-zinc-100: #dde1e8;
+  --color-zinc-200: #cfd4dd;
+  --color-zinc-300: #bcc2cd;
+  --color-zinc-400: #9aa1b0;
+  --color-zinc-500: #5a6175;
+  --color-zinc-600: #4b5266;
+  --color-zinc-800: #343a4a;
+  --color-zinc-900: #2a2f3d;
+  --focus-color: var(--color-royal);
+
+  --ring-protein: #2a2f3d;
+  --ring-carbs: #5a6175;
+  --ring-fat: #8a92a3;
+
+  --neu-light: #ffffff;
+  --neu-dark: #bec5d1;
+  --neu-edge: rgb(255 255 255 / .6);     /* hairline on cards, sheets and buttons */
+  --neu-line: rgb(0 0 0 / .1);           /* dividers inside a card */
+  --neu-scrim: rgb(42 47 61 / .35);      /* dim behind a dialog */
+  --neu-fat: #5a6175;                    /* the Fats macro's text (grey, like the others) */
+}
+.neu:not(.dark) body { color: var(--color-zinc-900); }
+
+/* Dark. The zinc scale stays Tailwind's own: the `dark:` variants already
+   pick the right ones. */
+:root.neu.dark {
+  color-scheme: dark;
+  --color-canvas: #25282f;
+  --color-royal: #c8ceda;
+  --color-lilac: #e6e9f0;
+  --color-primary: #c8ceda;
+  --color-ring: #c8ceda;
+  --color-on-accent: #15171d;
+  --color-carbs: #aab1c0;
+  --color-fat: #e08a85;
+  --color-fat-deep: #e08a85;
+  --color-danger: #c0524e;
+  --focus-color: var(--color-lilac);
+
+  --ring-protein: #e6e9f0;
+  --ring-carbs: #aab1c0;
+  --ring-fat: #7d8494;
+
+  --neu-light: #333741;
+  --neu-dark: #15171c;
+  --neu-edge: rgb(255 255 255 / .06);
+  --neu-line: rgb(255 255 255 / .1);
+  --neu-scrim: rgb(0 0 0 / .55);
+  --neu-fat: #8d94a4;
+}
+:root.neu body { background: var(--color-canvas); }
+.neu.dark body { color: #fff; }
+
+/* No glow in either version: SVG halos (rings, charts), the blurred glass
+   layers behind the tab bar, the top-of-screen bloom and neon text are
+   switched off. CSS `filter` overrides the SVG filter attribute. */
+.neu svg [filter] { filter: none; }
+.neu .glass-fx { display: none; }
+.neu .app-glow { display: none; }
+.neu .glow-text { text-shadow: none; }
+
+/* Increase Contrast: soft shadows alone are too faint to mark an edge, so
+   every raised or inset surface gets a solid outline instead. */
+@media (prefers-contrast: more) {
+  :root.neu:not(.dark) {
+    --neu-raised: 0 0 0 1px rgb(42 47 61 / .45);
+    --neu-raised-sm: 0 0 0 1px rgb(42 47 61 / .45);
+    --neu-inset: inset 0 0 0 1px rgb(42 47 61 / .45);
+  }
+  :root.neu.dark {
+    --neu-raised: 0 0 0 1px rgb(230 233 240 / .5);
+    --neu-raised-sm: 0 0 0 1px rgb(230 233 240 / .5);
+    --neu-inset: inset 0 0 0 1px rgb(230 233 240 / .5);
+  }
+}
 
 body {
   background: var(--color-canvas);

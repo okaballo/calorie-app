@@ -3,7 +3,7 @@
 // Saved in localStorage (see useLocalStorage):
 //   mt.profile      name, body stats and daily goals
 //   mt.avatar       profile picture as a base64 JPEG data URL (or null)
-//   mt.theme        'system' | 'dark' | 'light'
+//   mt.theme        'system' | 'dark' | 'light' | 'neumorphism' | 'neumorphism-dark' (the last two English only for now)
 //   mt.lang         'en' | 'ar' (Arabic switches the layout to right-to-left)
 //   mt.meals        logged meals, newest first, each tagged with its tracking day
 //   mt.customFoods  the user's own items (per 100 g)
@@ -23,7 +23,6 @@ import { useDrag } from '@use-gesture/react'
 import { SPRING, glassRim, GlassBackdrop } from './components/ui.jsx'
 import { LiquidButton } from '@/components/ui/liquid-glass-button'
 import { useLocalStorage } from './lib/useLocalStorage.js'
-import { SEED_FOODS } from './lib/foods.js'
 import { dayKey, nextTrackingDay, mealDay, parseDay, previousDay } from './lib/calc.js'
 import { isRTL, setLanguage, t } from './lib/i18n.js'
 import { EMPTY_WORKOUT, isEmptyWorkout, isLive } from './lib/workouts.js'
@@ -36,7 +35,6 @@ import AddMealSheet from './components/AddMealSheet.jsx'
 import CustomFoodSheet from './components/CustomFoodSheet.jsx'
 import TemplateEditSheet from './components/TemplateEditSheet.jsx'
 import PlanSheet from './components/PlanSheet.jsx'
-import MealDividerSheet from './components/MealDividerSheet.jsx'
 
 // Testing placeholders: 2,100 kcal = 140 g protein + 250 g carbs + 60 g fat.
 const DEFAULT_PROFILE = {
@@ -257,16 +255,16 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
         onPointerCancel={onPointerCancel}
         onLostPointerCapture={onPointerCancel}
         style={{ scale: barScale }}
-        className="glass-surface pointer-events-auto relative isolate h-[62px] min-w-0 flex-1 touch-none select-none rounded-full bg-white/20 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] dark:bg-white/[0.06] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.9)]"
+        className="glass-surface pointer-events-auto relative isolate h-[62px] min-w-0 flex-1 touch-none select-none rounded-full bg-white/20 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] dark:bg-white/[0.06] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.9)] neu:border neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised)"
       >
         <GlassBackdrop />
-        <div aria-hidden="true" className={`pointer-events-none absolute inset-0 rounded-full ${glassRim}`} />
+        <div aria-hidden="true" className={`pointer-events-none absolute inset-0 rounded-full neu:hidden ${glassRim}`} />
 
         <div ref={rowRef} className="absolute inset-1">
           {/* Resting pill, behind the icons. */}
           <motion.div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-black/6 dark:bg-black/45"
+            className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-black/6 dark:bg-black/45 neu:bg-canvas neu:shadow-(--neu-inset)"
             style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, opacity: pillOpacity }}
           />
 
@@ -288,8 +286,8 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
             className="pointer-events-none absolute inset-y-0 left-0 rounded-full"
             style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, opacity: press }}
           >
-            <div className={`absolute inset-0 rounded-full bg-white/5 ${glassRim}`} />
-            <div className="absolute inset-0 rounded-full shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.55),inset_-2px_0_3px_-1px_rgba(237,133,217,0.5)]" />
+            <div className={`absolute inset-0 rounded-full bg-white/5 neu:bg-transparent neu:shadow-(--neu-inset) ${glassRim}`} />
+            <div className="absolute inset-0 rounded-full shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.55),inset_-2px_0_3px_-1px_rgba(237,133,217,0.5)] neu:hidden" />
           </motion.div>
         </div>
       </motion.div>
@@ -299,7 +297,7 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
         onClick={onAdd}
         aria-label={t('Log a meal')}
         size="icon"
-        className="glass-surface pointer-events-auto isolate size-[62px] shrink-0 rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] backdrop-blur-2xl backdrop-saturate-180 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white [&>div]:rounded-full [&>div:nth-of-type(2)]:hidden"
+        className="glass-surface pointer-events-auto isolate size-[62px] shrink-0 rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] backdrop-blur-2xl backdrop-saturate-180 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white neu:bg-none [&>div]:rounded-full [&>div:nth-of-type(2)]:hidden neu:border neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised) neu:backdrop-blur-none neu:active:shadow-(--neu-inset) neu:[&>div:nth-of-type(1)]:hidden"
       >
         {/* No warp on this one: at 56 px it only roughens the circle, so
             LiquidButton's warp layer is hidden above. Its rim highlights are
@@ -314,6 +312,16 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
 })
 
 export default function App() {
+  // The built-in food database (about a thousand foods) is its own chunk,
+  // loaded right after the first screen so it does not slow the first paint.
+  // Until it arrives (a moment) the Database list is empty.
+  const [seedFoods, setSeedFoods] = useState([])
+  useEffect(() => {
+    let live = true
+    import('./lib/foods.js').then((m) => { if (live) setSeedFoods(m.SEED_FOODS) })
+    return () => { live = false }
+  }, [])
+
   const [storedProfile, setProfile] = useLocalStorage('mt.profile', DEFAULT_PROFILE)
   const [avatar, setAvatar] = useLocalStorage('mt.avatar', null)
   const [theme, setTheme] = useLocalStorage('mt.theme', 'system')
@@ -403,20 +411,24 @@ export default function App() {
   const toggleCheatDay = (key) =>
     setCheatDays((list) => (list.includes(key) ? list.filter((d) => d !== key) : [...list, key]))
 
-  // Theme: toggling the `dark` class on <html> switches every `dark:` variant.
-  // 'system' follows the device and changes with it, even while the app is open.
+  // Theme: toggling the `dark` class on <html> switches every `dark:` variant,
+  // the `neu` class every `neu:` one. 'system' follows the device and changes
+  // with it, even while the app is open. Neumorphism is English-only for now:
+  // in Arabic it shows as Light, and Dark Neumorphism as plain Dark.
   useEffect(() => {
     const query = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
-      const dark = theme === 'dark' || (theme !== 'light' && query.matches)
+      const neu = (theme === 'neumorphism' || theme === 'neumorphism-dark') && !rtl
+      const dark = theme === 'dark' || theme === 'neumorphism-dark' || (theme === 'system' && query.matches)
       document.documentElement.classList.toggle('dark', dark)
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#000000' : '#f7f7f8')
+      document.documentElement.classList.toggle('neu', neu)
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? (neu ? '#25282f' : '#000000') : neu ? '#e4e8ee' : '#f7f7f8')
     }
     apply()
     if (theme !== 'system') return undefined
     query.addEventListener('change', apply)
     return () => query.removeEventListener('change', apply)
-  }, [theme])
+  }, [theme, rtl])
 
   // Language: Arabic flips the whole layout to right-to-left.
   useLayoutEffect(() => {
@@ -429,9 +441,8 @@ export default function App() {
   const [mealOpen, setMealOpen] = useState(false)
   const [mealEditing, setMealEditing] = useState(null)         // null | logged meal being edited
   const [customEditing, setCustomEditing] = useState(null)     // null | 'new' | food being edited
-  const [templateEditing, setTemplateEditing] = useState(null) // null | template being edited
+  const [templateEditing, setTemplateEditing] = useState(null) // null | 'new' | saved meal being edited
   const [planOpen, setPlanOpen] = useState(false)
-  const [dividerOpen, setDividerOpen] = useState(false)
 
   // ---- Tab pager ----------------------------------------------------------
   // All tabs sit side by side on one track; `x` (a framer-motion value)
@@ -596,8 +607,19 @@ export default function App() {
     { filterTaps: true, pointer: { touch: true } },
   )
 
+  // "Add to My Items" (press and hold a Database food): a copy of the food,
+  // kept with the ones you made. `from` is the Database id, so a food is never
+  // added twice and the picker can tell it is already there.
+  const addToMyItems = (food) => setCustomFoods((list) => (
+    list.some((c) => c.from === food.id) ? list : [...list, {
+      id: crypto.randomUUID(), from: food.id, name: food.name, custom: true,
+      calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat,
+      ...(food.servingGrams > 0 && { servingGrams: food.servingGrams }),
+    }]
+  ))
+
   const byName = (a, b) => a.name.localeCompare(b.name)
-  const foods = [...SEED_FOODS].sort(byName)    // built-in database
+  const foods = seedFoods                       // built-in database (the picker sorts it)
   const myFoods = [...customFoods].sort(byName) // user's own items
 
   // Page content, memoised: opening a sheet or switching tabs re-renders App,
@@ -659,7 +681,7 @@ export default function App() {
     // fixed + inset-0 pins the app to the real screen edges. A height of 100%
     // can come out shorter than the screen in an installed iOS web app, which
     // leaves a strip under the tab bar. Pure OLED black in dark mode.
-    <div className="fixed inset-0 mx-auto flex max-w-md flex-col overflow-hidden bg-canvas text-zinc-900 antialiased transition-colors duration-300 dark:bg-black dark:text-white">
+    <div className="fixed inset-0 mx-auto flex max-w-md flex-col overflow-hidden bg-canvas text-zinc-900 antialiased transition-colors duration-300 dark:bg-black dark:text-white neu:bg-canvas">
       <div aria-hidden="true" className="app-glow pointer-events-none absolute inset-0" />
       {/* Pager viewport: clips the track and receives the drag. */}
       <div ref={viewportRef} {...bind()} className="relative min-h-0 flex-1 overflow-hidden" style={{ touchAction: 'pan-y' }}>
@@ -693,7 +715,7 @@ export default function App() {
           a coloured card never shows as a smear between the glass shapes. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[calc(env(safe-area-inset-bottom)+112px)] bg-linear-to-t from-canvas/85 via-canvas/45 to-transparent dark:from-black/85 dark:via-black/45"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[calc(env(safe-area-inset-bottom)+112px)] bg-linear-to-t from-canvas/85 via-canvas/45 to-transparent dark:from-black/85 dark:via-black/45 neu:from-canvas/85 neu:via-canvas/45"
       />
 
       <TabBar navIndex={navIndex} onTab={goTo} onAdd={() => setMealOpen(true)} lang={lang} />
@@ -718,8 +740,9 @@ export default function App() {
             onClose={() => setMealOpen(false)}
             onCreateCustom={() => setCustomEditing('new')}
             onEditCustom={(food) => setCustomEditing(food)}
+            onCreateMeal={() => setTemplateEditing('new')}
             onEditTemplate={(template) => setTemplateEditing(template)}
-            onOpenDivider={() => setDividerOpen(true)}
+            onAddToMyItems={addToMyItems}
           />
         )}
       </AnimatePresence>
@@ -736,8 +759,9 @@ export default function App() {
             onClose={() => setMealEditing(null)}
             onCreateCustom={() => setCustomEditing('new')}
             onEditCustom={(food) => setCustomEditing(food)}
+            onCreateMeal={() => setTemplateEditing('new')}
             onEditTemplate={(template) => setTemplateEditing(template)}
-            onOpenDivider={() => setDividerOpen(true)}
+            onAddToMyItems={addToMyItems}
           />
         )}
       </AnimatePresence>
@@ -757,20 +781,14 @@ export default function App() {
           <TemplateEditSheet
             key="template"
             foods={foods} customFoods={myFoods} templates={templates}
-            template={templateEditing}
-            onSave={(template) => setTemplates((list) => upsert(list, template))}
+            template={templateEditing === 'new' ? null : templateEditing}
+            onAddToMyItems={addToMyItems}
+            // A new meal goes to the top of My Items > Saved Meals, like one saved from Home.
+            onSave={(template) => setTemplates((list) => (
+              list.some((x) => x.id === template.id) ? list.map((x) => (x.id === template.id ? template : x)) : [template, ...list]
+            ))}
             onDelete={(id) => setTemplates((list) => list.filter((t) => t.id !== id))}
             onClose={() => setTemplateEditing(null)}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {dividerOpen && (
-          <MealDividerSheet
-            key="divider"
-            foods={foods} customFoods={myFoods} templates={templates}
-            onSave={(food) => setCustomFoods((list) => [...list, food])}
-            onClose={() => setDividerOpen(false)}
           />
         )}
       </AnimatePresence>

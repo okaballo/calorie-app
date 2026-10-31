@@ -134,7 +134,7 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
             onClick={() => onViewDay(key)}
             aria-pressed={selected}
             aria-label={`${date.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}${cheat ? `, ${t('Cheat Day')}` : ''}`}
-            className={`flex flex-col items-center gap-1.5 rounded-xl py-1 transition active:scale-95 disabled:opacity-30 ${selected ? 'bg-black/5 dark:bg-white/8' : ''}`}
+            className={`flex flex-col items-center gap-1.5 rounded-xl py-1 transition active:scale-95 disabled:opacity-30 ${selected ? 'bg-black/5 dark:bg-white/8 neu:bg-transparent neu:shadow-(--neu-inset)' : ''}`}
           >
             <span className={`text-xs ${current || selected || cheat ? 'font-bold' : 'font-medium'} ${letter}`}>
               {date.toLocaleDateString(locale(), { weekday: 'narrow' })}
@@ -232,7 +232,7 @@ export default function Home({
         <div className="relative mt-3">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-1/2 size-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(120,81,169,0.22),rgba(120,81,169,0.08)_55%,transparent)] blur-2xl dark:bg-[radial-gradient(closest-side,rgba(120,81,169,0.45),rgba(120,81,169,0.14)_55%,transparent)]"
+            className="pointer-events-none absolute top-1/2 left-1/2 size-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(120,81,169,0.22),rgba(120,81,169,0.08)_55%,transparent)] blur-2xl dark:bg-[radial-gradient(closest-side,rgba(120,81,169,0.45),rgba(120,81,169,0.14)_55%,transparent)] neu:hidden"
           />
           <div className="relative">
             <CalorieRing progress={progress} remaining={goal - totals.calories} />
@@ -254,9 +254,9 @@ export default function Home({
       <Card>
         <SectionTitle>{t('Macros')}</SectionTitle>
         <div className="mt-4 grid grid-cols-3">
-          <MiniRing label={t('Protein')} value={totals.protein} goal={num(profile.proteinGoal)} color="#9b6fe0" />
-          <MiniRing label={t('Carbs')} value={totals.carbs} goal={num(profile.carbsGoal)} color="#8c9eff" />
-          <MiniRing label={t('Fats')} value={totals.fat} goal={num(profile.fatGoal)} color="#ed85d9" />
+          <MiniRing label={t('Protein')} value={totals.protein} goal={num(profile.proteinGoal)} color="var(--ring-protein)" />
+          <MiniRing label={t('Carbs')} value={totals.carbs} goal={num(profile.carbsGoal)} color="var(--ring-carbs)" />
+          <MiniRing label={t('Fats')} value={totals.fat} goal={num(profile.fatGoal)} color="var(--ring-fat)" />
         </div>
       </Card>
 
@@ -333,7 +333,7 @@ export default function Home({
         <>
           <button
             onClick={() => setConfirming(true)}
-            className="w-full rounded-2xl border-[0.5px] border-black/10 bg-white py-3.5 font-semibold transition active:scale-[0.98] active:bg-black/5 dark:border-white/12 dark:bg-white/4 dark:active:bg-white/8"
+            className="w-full rounded-2xl border-[0.5px] border-black/10 bg-white py-3.5 font-semibold transition active:scale-[0.98] active:bg-black/5 dark:border-white/12 dark:bg-white/4 dark:active:bg-white/8 neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised-sm) neu:active:bg-canvas neu:active:shadow-(--neu-inset)"
           >
             {t('Start New Day')}
           </button>

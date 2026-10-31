@@ -22,7 +22,7 @@ import {
   workoutStats,
 } from '../lib/workouts.js'
 import {
-  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, EmptyState, ConfirmDialog, muted, faint, accentText, fieldBg, divider,
+  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, EmptyState, ConfirmDialog, muted, faint, accentText, buttonBg, divider,
 } from '../components/ui.jsx'
 import { LineChart } from '../components/Charts.jsx'
 import OptionMenu from '../components/OptionMenu.jsx'
@@ -121,7 +121,7 @@ export default function Workout({
               {/* Quiet graphite, like the app's inputs: Continue is the main action. */}
               <button
                 onClick={() => onFinish(day)}
-                className={`flex-1 rounded-2xl py-3.5 font-semibold transition active:scale-[0.98] active:opacity-80 ${fieldBg}`}
+                className={`flex-1 rounded-2xl py-3.5 font-semibold transition active:scale-[0.98] active:opacity-80 ${buttonBg}`}
               >
                 {t('Finish Routine')}
               </button>
@@ -169,7 +169,7 @@ export default function Workout({
                   </button>
                   <button
                     onClick={() => start(routine)}
-                    className="shrink-0 rounded-full bg-royal px-4 py-1.5 text-[13px] font-semibold text-white shadow-[0_6px_16px_-8px_rgba(120,81,169,0.8)] transition active:scale-95"
+                    className="shrink-0 rounded-full bg-royal px-4 py-1.5 text-[13px] font-semibold text-on-accent shadow-[0_6px_16px_-8px_rgba(120,81,169,0.8)] transition neu:shadow-(--neu-raised-sm) active:scale-95"
                   >
                     {t('Start')}
                   </button>

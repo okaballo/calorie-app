@@ -7,6 +7,7 @@
 // Importing replaces all current mt.* data, so the caller should confirm first
 // and reload the page afterwards (every tab reads its data from storage on load).
 import { dayKey } from './calc.js'
+import { OWNER_KEY, RECONCILE_KEY } from './sync/syncEngine.js'
 
 const APP = 'KiBase'
 const VERSION = 1
@@ -21,7 +22,7 @@ const oneOf = (...values) => (v) => values.includes(v)
 const SCHEMA = {
   'mt.profile': isObject,
   'mt.avatar': (v) => v === null || (typeof v === 'string' && v.startsWith('data:image/')),
-  'mt.theme': oneOf('system', 'dark', 'light'),
+  'mt.theme': oneOf('system', 'dark', 'light', 'neumorphism', 'neumorphism-dark'),
   'mt.lang': oneOf('en', 'ar'),
   'mt.meals': arrayOf(isObject),
   'mt.customFoods': arrayOf(isObject),
@@ -116,6 +117,9 @@ export function applyBackup(data) {
   try {
     for (const [key] of previous) localStorage.removeItem(key)
     for (const [key, value] of Object.entries(data)) localStorage.setItem(key, JSON.stringify(value))
+    // Cloud Sync: a restore means "this is my data now", so the next sync makes the
+    // cloud match it (records missing from the backup are deleted there too).
+    if (localStorage.getItem(OWNER_KEY)) localStorage.setItem(RECONCILE_KEY, '1')
   } catch (err) {
     for (const key of storedKeys()) localStorage.removeItem(key)
     for (const [key, raw] of previous) localStorage.setItem(key, raw)

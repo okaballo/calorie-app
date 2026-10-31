@@ -75,7 +75,7 @@ export default function OptionMenu({ value, options, onChange, label }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92 }}
             transition={{ type: 'spring', stiffness: 520, damping: 38, mass: 0.8 }}
-            className="absolute end-0 top-full z-20 mt-1.5 max-h-64 w-max min-w-32 max-w-64 origin-top-right overflow-y-auto rounded-2xl border-[0.5px] border-black/8 bg-white/75 p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.25)] backdrop-blur-xl backdrop-saturate-150 rtl:origin-top-left dark:border-white/12 dark:bg-black/55 dark:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.8)]"
+            className="absolute end-0 top-full z-20 mt-1.5 max-h-64 w-max min-w-32 max-w-64 origin-top-right overflow-y-auto rounded-2xl border-[0.5px] border-black/8 bg-white/75 p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.25)] backdrop-blur-xl backdrop-saturate-150 rtl:origin-top-left dark:border-white/12 dark:bg-black/55 dark:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.8)] neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised) neu:backdrop-blur-none"
           >
             {options.map((option) => {
               const on = option.value === value
