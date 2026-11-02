@@ -124,26 +124,41 @@ const firstWeekday = () => {
  * Seven { date, label, totals } entries for the week containing the active
  * tracking day. Meals are grouped by their tracking day, not by the clock.
  */
-export const currentWeek = (meals, activeDate = dayKey()) => {
+export const currentWeek = (meals, activeDate = dayKey(), byDay = dayTotals(meals)) => {
   const start = parseDay(activeDate)
   start.setDate(start.getDate() - ((start.getDay() - firstWeekday() + 7) % 7))
-
-  const byDay = {}
-  for (const meal of meals) {
-    const key = mealDay(meal)
-    byDay[key] = add(byDay[key] || ZERO, mealTotals(meal))
-  }
 
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(start)
     date.setDate(start.getDate() + i)
     return {
       date,
-      label: date.toLocaleDateString(locale(), { weekday: 'short' }),
+      label: weekdayFormat(locale(), 'short').format(date),
       totals: byDay[dayKey(date)] || ZERO,
     }
   })
 }
+
+/** Macro totals of every tracking day: { 'YYYY-MM-DD': totals }. One pass over all meals,
+ *  so callers that need several weeks compute it once and pass it to currentWeek. */
+export const dayTotals = (meals) => {
+  const byDay = {}
+  for (const meal of meals) {
+    const key = mealDay(meal)
+    byDay[key] = add(byDay[key] || ZERO, mealTotals(meal))
+  }
+  return byDay
+}
+
+// Intl.DateTimeFormat is slow to create (toLocaleDateString makes a new one on every call), so keep them.
+const formats = new Map()
+/** A cached Intl.DateTimeFormat; `options` is the whole option bag, e.g. { weekday: 'long', day: 'numeric' }. */
+export const dateFormat = (loc, options) => {
+  const key = `${loc}|${JSON.stringify(options)}`
+  if (!formats.has(key)) formats.set(key, new Intl.DateTimeFormat(loc, options))
+  return formats.get(key)
+}
+const weekdayFormat = (loc, weekday) => dateFormat(loc, { weekday })
 
 // ---- Batch meal divider --------------------------------------------------
 

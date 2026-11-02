@@ -2,9 +2,9 @@
 // three macro rings, the meals of the ACTIVE tracking day, then the
 // analytics section (passed in as `analytics`, see components/Analytics.jsx).
 // The day only changes when the user confirms Start New Day.
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
-import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, dayKey, currentWeek, num, fmt0 } from '../lib/calc.js'
+import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, dayKey, currentWeek, dayTotals, dateFormat, num, fmt0 } from '../lib/calc.js'
 import {
   Card, SectionTitle, PrimaryButton, CalorieRing, MiniRing, MacroSummary, Avatar, PencilIcon, TrashIcon, EmptyState,
   ConfirmDialog, NameDialog, focusRing, hitSlopY, muted, faint, accentText, divider, project, useRowMotion,
@@ -35,10 +35,22 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
   }
   const prevKey = shiftKey(-7)
   const nextKey = shiftKey(7)
-  const week = currentWeek(meals, viewDay)
-  const hasNext = dayKey(week[6].date) < activeDate // nothing after the current day's week
-  const prevWeek = currentWeek(meals, prevKey)
-  const nextWeek = hasNext ? currentWeek(meals, nextKey > activeDate ? activeDate : nextKey) : null
+  // The totals of all meals are summed once per change to `meals`; the three weeks are rebuilt only
+  // when the viewed day changes (this component re-renders on every drag frame and tab switch).
+  const loc = locale()
+  const { week, prevWeek, nextWeek, hasNext } = useMemo(() => {
+    const byDay = dayTotals(meals)
+    const week = currentWeek(meals, viewDay, byDay)
+    const hasNext = dayKey(week[6].date) < activeDate // nothing after the current day's week
+    return {
+      week, hasNext,
+      prevWeek: currentWeek(meals, prevKey, byDay),
+      nextWeek: hasNext ? currentWeek(meals, nextKey > activeDate ? activeDate : nextKey, byDay) : null,
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meals, viewDay, activeDate, loc])
+  const narrow = dateFormat(loc, { weekday: 'narrow' })
+  const long = dateFormat(loc, { weekday: 'long', day: 'numeric', month: 'long' })
 
   // Moves the track to `to`; with Reduce Motion it jumps instead of springing.
   const move = (to, options) => {
@@ -133,11 +145,11 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
             disabled={future}
             onClick={() => onViewDay(key)}
             aria-pressed={selected}
-            aria-label={`${date.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}${cheat ? `, ${t('Cheat Day')}` : ''}`}
+            aria-label={`${long.format(date)}${cheat ? `, ${t('Cheat Day')}` : ''}`}
             className={`flex flex-col items-center gap-1.5 rounded-xl py-1 transition active:scale-95 disabled:opacity-30 ${selected ? 'bg-black/5 dark:bg-white/8 neu:bg-transparent neu:shadow-(--neu-inset)' : ''}`}
           >
             <span className={`text-xs ${current || selected || cheat ? 'font-bold' : 'font-medium'} ${letter}`}>
-              {date.toLocaleDateString(locale(), { weekday: 'narrow' })}
+              {narrow.format(date)}
             </span>
             <span className={`flex size-6 items-center justify-center rounded-full ${
               logged

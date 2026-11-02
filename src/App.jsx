@@ -628,10 +628,11 @@ export default function App() {
   const foods = seedFoods                       // built-in database (the picker sorts it)
   const myFoods = [...customFoods].sort(byName) // user's own items
 
-  // Page content, memoised: opening a sheet or switching tabs re-renders App,
-  // but the pages only re-render when their own data changes.
-  const pages = useMemo(() => ({
-    Home: (
+  // Page content, memoised one page at a time: opening a sheet or switching tabs re-renders App,
+  // but a page re-renders only when its OWN data changes. (One memo for all four used to rebuild
+  // every page whenever any of them changed: ticking a set re-rendered Home, Weight and Profile too.)
+  // Every page lists `lang`, as language changes re-translate all of them.
+  const homePage = useMemo(() => (
       <Home
         profile={profile} avatar={avatar} meals={meals} activeDay={activeDay}
         viewDay={shownDay} onViewDay={(key) => setViewDay(key === activeDay.date ? null : key)} cheatDays={cheatDays}
@@ -646,10 +647,12 @@ export default function App() {
             cheatDays={cheatDays} onToggleCheatDay={toggleCheatDay} />
         }
       />
-    ),
-    // Logs to the same day Home is showing, so a forgotten workout can be
-    // added by picking its date on Home first.
-    Workout: (
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [profile, avatar, meals, activeDay, shownDay, cheatDays, planProfile, lang])
+
+  // Logs to the same day Home is showing, so a forgotten workout can be
+  // added by picking its date on Home first.
+  const workoutPage = useMemo(() => (
       <CustomExercisesContext.Provider value={{ list: customExercises, setList: setCustomList }}>
       <Workout
         day={shownDay} activeDate={activeDay.date}
@@ -665,15 +668,19 @@ export default function App() {
         onBackToToday={() => setViewDay(null)}
       />
       </CustomExercisesContext.Provider>
-    ),
-    Weight: (
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [shownDay, activeDay, dailyWorkouts, workoutHistory, workoutTemplates, customExercises, planProfile.weightKg, lang])
+
+  const weightPage = useMemo(() => (
       <Weight
         entries={weights}
         onAdd={(entry) => setWeights((list) => [...list, entry].sort((a, b) => a.date.localeCompare(b.date)))}
         onDelete={(id) => setWeights((list) => list.filter((e) => e.id !== id))}
       />
-    ),
-    Profile: (
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [weights, lang])
+
+  const profilePage = useMemo(() => (
       <Profile
         profile={profile} onChange={updateProfile}
         avatar={avatar} onAvatar={setAvatar}
@@ -681,9 +688,10 @@ export default function App() {
         lang={lang} onLang={setLang}
         onOpenPlan={() => setPlanOpen(true)}
       />
-    ),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [profile, planProfile, avatar, meals, activeDay, shownDay, weights, cheatDays, dailyWorkouts, workoutHistory, workoutTemplates, customExercises, theme, lang])
+  ), [profile, avatar, theme, lang])
+
+  const pages = { Home: homePage, Workout: workoutPage, Weight: weightPage, Profile: profilePage }
 
   return (
     // fixed + inset-0 pins the app to the real screen edges. A height of 100%

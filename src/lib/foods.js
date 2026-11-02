@@ -111,10 +111,3 @@ for (const brand of BRANDS) {
 addTranslations(arabic)
 
 export const SEED_FOODS = foods
-
-/** Restaurants with at least one item, in menu order: [{ name, count }]. */
-export const FOOD_BRANDS = BRANDS.map((b) => ({
-  name: b.name, count: b.rows.length,
-}))
-
-export const TRANSLATIONS = arabic

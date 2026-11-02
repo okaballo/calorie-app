@@ -3,10 +3,8 @@
 // Cancel leaves the saved routine untouched; Save replaces it (same id).
 // Opened from "Add New Routine" and from a routine's pencil on the Workout tab.
 import { useRef, useState } from 'react'
-import {
-  newEntry, newSet, editEntries, exerciseOf, toRoutine, swapEntry, addPartners, unlink, removeEntryFrom, moveEntry,
-  toggleDropSet, supersetTags, addDrop, patchDrop, removeDrop,
-} from '../lib/workouts.js'
+import { newEntry, editEntries, exerciseOf, toRoutine, swapEntry, addPartners, supersetTags } from '../lib/workouts.js'
+import { useEntryOps } from '../lib/useEntryOps.js'
 import { PrimaryButton, Sheet, TextInput, ConfirmDialog, buttonBg, muted, accentText } from './ui.jsx'
 import SplitsSheet from './SplitsSheet.jsx'
 import ExerciseCard from './ExerciseCard.jsx'
@@ -26,15 +24,7 @@ export default function RoutineSheet({ routine, bodyWeight = 0, onSave, onDelete
   const canSave = name.trim() !== '' && entries.length > 0
 
   const setEntry = (id, fn) => setEntries((list) => list.map((e) => (e.id === id ? fn(e) : e)))
-  const setSet = (entryId, setId, patch) =>
-    setEntry(entryId, (e) => ({ ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)) }))
-  // A new set starts from the last one's numbers.
-  const addSet = (entryId) => setEntry(entryId, (e) => {
-    const last = e.sets[e.sets.length - 1]
-    return { ...e, sets: [...e.sets, newSet(last?.kg ?? '', last?.reps ?? '')] }
-  })
-  const removeSet = (entryId, setId) => setEntry(entryId, (e) => ({ ...e, sets: e.sets.filter((s) => s.id !== setId) }))
-
+  const ops = useEntryOps(setEntries, setPicker)
   const tags = supersetTags(entries)
 
   const save = () => {
@@ -54,24 +44,7 @@ export default function RoutineSheet({ routine, bodyWeight = 0, onSave, onDelete
 
       <div className="space-y-4">
         {entries.map((entry) => (
-          <ExerciseCard
-            key={entry.id}
-            entry={entry}
-            planning
-            tag={tags[entry.id]}
-            onSwap={() => setPicker({ replacing: entry })}
-            onRemove={() => setEntries((list) => removeEntryFrom(list, entry.id))}
-            onAddPartner={() => setPicker({ replacing: null, partnerOf: entry })}
-            onMove={(dir) => setEntries((list) => moveEntry(list, entry.id, dir))}
-            onUnlink={() => setEntries((list) => unlink(list, entry.id))}
-            onToggleDropSet={() => setEntry(entry.id, toggleDropSet)}
-            onSet={(setId, patch) => setSet(entry.id, setId, patch)}
-            onAddSet={() => addSet(entry.id)}
-            onRemoveSet={(setId) => removeSet(entry.id, setId)}
-            onDrop={(setId, dropId, patch) => setEntry(entry.id, (e) => patchDrop(e, setId, dropId, patch))}
-            onAddDrop={(setId) => setEntry(entry.id, (e) => addDrop(e, setId))}
-            onRemoveDrop={(setId, dropId) => setEntry(entry.id, (e) => removeDrop(e, setId, dropId))}
-          />
+          <ExerciseCard key={entry.id} entry={entry} planning tag={tags[entry.id]} ops={ops} />
         ))}
       </div>
 

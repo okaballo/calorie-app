@@ -20,7 +20,7 @@
 // added), so their kg column is only the EXTRA weight and is headed "+kg".
 // In a drop-set exercise every set can have drops: lighter rounds shown as
 // indented rows under the set, done straight after it.
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { animate, motion, useMotionValue } from 'framer-motion'
 import { num, fmt0, fmt1 } from '../lib/calc.js'
@@ -43,6 +43,8 @@ const GripIcon = () => (
   <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.2"
     strokeLinecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
 )
+
+const NONE = [] // a stable empty list, so a default prop does not defeat memo
 
 // Set table columns
 const LOG_GRID = 'grid grid-cols-[1.5rem_minmax(0,1fr)_3.75rem_3.25rem_2rem_1.25rem] items-center gap-2'
@@ -96,11 +98,22 @@ function CardMenu({ items, label }) {
   )
 }
 
-export default function ExerciseCard({
-  entry, previous = [], best = [], planning = false, tag = null,
-  onSwap, onMove, onRemove, onSet, onAddSet, onRemoveSet,
-  onAddPartner, onUnlink, onToggleDropSet, onDrop, onAddDrop, onRemoveDrop,
-}) {
+// `ops` (lib/useEntryOps.js) never changes, so the card re-renders only when its own entry, its
+// history (`previous`, `best`) or its superset position changes.
+function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, tag = null, ops }) {
+  const id = entry.id
+  const onSwap = () => ops.swap(entry)
+  const onMove = (dir) => ops.move(id, dir)
+  const onRemove = () => ops.remove(id)
+  const onSet = (setId, patch) => ops.setSet(id, setId, patch)
+  const onAddSet = () => ops.addSet(id)
+  const onRemoveSet = (setId) => ops.removeSet(id, setId)
+  const onAddPartner = () => ops.addPartner(entry)
+  const onUnlink = () => ops.unlink(id)
+  const onToggleDropSet = () => ops.toggleDropSet(id)
+  const onDrop = (setId, dropId, patch) => ops.patchDrop(id, setId, dropId, patch)
+  const onAddDrop = (setId) => ops.addDrop(id, setId)
+  const onRemoveDrop = (setId, dropId) => ops.removeDrop(id, setId, dropId)
   const ex = exerciseOf(entry)
   const bodyweight = isBodyweight(ex)
   const grid = planning ? PLAN_GRID : LOG_GRID
@@ -349,3 +362,8 @@ export default function ExerciseCard({
     </motion.div>
   )
 }
+
+export default memo(ExerciseCard, (a, b) => (
+  a.entry === b.entry && a.previous === b.previous && a.best === b.best && a.planning === b.planning &&
+  a.ops === b.ops && a.tag?.n === b.tag?.n && a.tag?.of === b.tag?.of
+))

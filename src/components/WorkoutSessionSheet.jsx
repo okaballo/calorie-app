@@ -8,12 +8,13 @@
 // started from. It lights up only once the exercise list differs from that
 // routine (an exercise added, removed, replaced or reordered). A workout with
 // no source routine (e.g. a repeated one) asks for a name and saves a new one.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { fmt0 } from '../lib/calc.js'
 import {
-  EMPTY_WORKOUT, newEntry, newSet, exerciseOf, workoutStats, lastSets, bestSets, toRoutine, swapEntry,
-  addPartners, unlink, removeEntryFrom, moveEntry, tidyGroups, toggleDropSet, supersetTags, addDrop, patchDrop, removeDrop,
+  EMPTY_WORKOUT, newEntry, exerciseOf, workoutStats, lastSets, bestSets, toRoutine, swapEntry,
+  addPartners, tidyGroups, supersetTags,
 } from '../lib/workouts.js'
+import { useEntryOps } from '../lib/useEntryOps.js'
 import {
   Card, PrimaryButton, Sheet, TextInput, ConfirmDialog, NameDialog, muted, accentText,
 } from './ui.jsx'
@@ -38,20 +39,17 @@ export default function WorkoutSessionSheet({
   // All functional, so quick typing never loses a keystroke.
   const update = (fn) => onUpdate(day, fn)
   const setEntry = (id, fn) => update((w) => ({ ...w, exercises: w.exercises.map((e) => (e.id === id ? fn(e) : e)) }))
-  const setSet = (entryId, setId, patch) =>
-    setEntry(entryId, (e) => ({ ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)) }))
-  // A new set starts from the last one's numbers, like most lifting logs.
-  const addSet = (entryId) => setEntry(entryId, (e) => {
-    const last = e.sets[e.sets.length - 1]
-    return { ...e, sets: [...e.sets, newSet(last?.kg ?? '', last?.reps ?? '')] }
-  })
-  // The plan is matched by position, so it loses the same row.
-  const removeSet = (entryId, setId) => setEntry(entryId, (e) => {
-    const i = e.sets.findIndex((s) => s.id === setId)
-    return { ...e, sets: e.sets.filter((_, j) => j !== i), plan: e.plan?.filter((_, j) => j !== i) }
-  })
   const setExercises = (fn) => update((w) => ({ ...w, exercises: fn(w.exercises) }))
   const tags = supersetTags(workout.exercises)
+  const ops = useEntryOps(setExercises, setPicker)
+
+  // What each exercise did before: computed again only when the history, the day or the list of
+  // exercises changes, not on every tick or keystroke (it scans the whole history).
+  const exerciseKey = workout.exercises.map((e) => e.exerciseId).join()
+  const past = useMemo(() => Object.fromEntries(workout.exercises.map((e) => [
+    e.exerciseId, { previous: lastSets(history, e.exerciseId, day), best: bestSets(history, e.exerciseId, day) },
+  ])), // eslint-disable-next-line react-hooks/exhaustive-deps
+  [history, day, exerciseKey])
 
   const addExercises = (list) => update((w) => ({
     ...w,
@@ -132,23 +130,8 @@ export default function WorkoutSessionSheet({
       <div className="space-y-4">
         {workout.exercises.map((entry) => (
           <ExerciseCard
-            key={entry.id}
-            entry={entry}
-            previous={lastSets(history, entry.exerciseId, day)}
-            best={bestSets(history, entry.exerciseId, day)}
-            tag={tags[entry.id]}
-            onSwap={() => setPicker({ replacing: entry })}
-            onRemove={() => setExercises((list) => removeEntryFrom(list, entry.id))}
-            onAddPartner={() => setPicker({ replacing: null, partnerOf: entry })}
-            onMove={(dir) => setExercises((list) => moveEntry(list, entry.id, dir))}
-            onUnlink={() => setExercises((list) => unlink(list, entry.id))}
-            onToggleDropSet={() => setEntry(entry.id, toggleDropSet)}
-            onSet={(setId, patch) => setSet(entry.id, setId, patch)}
-            onAddSet={() => addSet(entry.id)}
-            onRemoveSet={(setId) => removeSet(entry.id, setId)}
-            onDrop={(setId, dropId, patch) => setEntry(entry.id, (e) => patchDrop(e, setId, dropId, patch))}
-            onAddDrop={(setId) => setEntry(entry.id, (e) => addDrop(e, setId))}
-            onRemoveDrop={(setId, dropId) => setEntry(entry.id, (e) => removeDrop(e, setId, dropId))}
+            key={entry.id} entry={entry} tag={tags[entry.id]} ops={ops}
+            previous={past[entry.exerciseId].previous} best={past[entry.exerciseId].best}
           />
         ))}
       </div>

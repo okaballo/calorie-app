@@ -10,7 +10,6 @@
 // Stored values (sex, activity, goal, food names) stay in English; only what
 // is displayed is translated.
 
-export const LANGUAGES = { en: 'English', ar: 'العربية' }
 
 let current = 'en'
 
@@ -73,10 +72,7 @@ const AR = {
   'Open profile': 'فتح الملف الشخصي',
   'Current Day': 'اليوم الحالي',
   'Viewing': 'عرض',
-  'Pick a date': 'اختر تاريخاً',
   'Back to current day': 'العودة لليوم الحالي',
-  'Previous week': 'الأسبوع السابق',
-  'Next week': 'الأسبوع التالي',
   'Editing a past day. Changes update your Analytics.': 'تعديل يوم سابق. تُحدَّث التحليلات بالتغييرات.',
   Eaten: 'المستهلك',
   Macros: 'المغذيات',
@@ -146,7 +142,6 @@ const AR = {
   'Personal Info': 'المعلومات الشخصية',
   Name: 'الاسم',
   Age: 'العمر',
-  Appearance: 'المظهر',
   Themes: 'السمات',
   'System follows your device’s light or dark setting.': 'يتبع خيار «النظام» إعداد الوضع الفاتح أو الداكن في جهازك.',
   System: 'النظام',
@@ -232,7 +227,6 @@ const AR = {
 
   // ---- Custom item ----
   'Edit Custom Item': 'تعديل عنصر مخصّص',
-  'Custom Meal': 'وجبة مخصّصة',
   'Enter the values for the amount below (100 g by default). When you log it later you only type the grams.':
     'أدخل القيم للكمية أدناه (100 غ افتراضياً). عند تسجيله لاحقاً تكتب الغرامات فقط.',
   'Amount': 'الكمية',
@@ -242,29 +236,16 @@ const AR = {
   'Optional. Logging this item starts at one portion instead of 100 g.':
     'اختياري. يبدأ تسجيل هذا العنصر بحصة واحدة بدلاً من 100 غ.',
   'Save Changes': 'حفظ التغييرات',
-  'Save Custom Meal': 'حفظ الوجبة المخصّصة',
   'Delete item': 'حذف العنصر',
   'Meals you already logged with it are not affected.': 'لن تتأثر الوجبات التي سجّلتها به من قبل.',
 
   // ---- Meal divider ----
-  'Batch Ingredients': 'مكوّنات الطبخة',
-  'Add everything that went into the pot from the list below, with the weights you used. A saved meal adds all of its items.':
-    'أضف كل ما وضعته في القدر من القائمة بالأسفل مع الأوزان التي استخدمتها. الوجبة المحفوظة تضيف جميع عناصرها.',
-  'Whole batch · {n} g': 'الطبخة كاملة · {n} غ',
-  'Divide By': 'قسّم على',
   'Fewer portions': 'حصص أقل',
   'Number of portions': 'عدد الحصص',
   portion: 'حصة',
   portions: 'حصص',
   'More portions': 'حصص أكثر',
-  'Per Portion': 'لكل حصة',
   '≈ {n} g each': '≈ {n} غ لكل حصة',
-  'Per 100 g: {kcal} kcal · P {p} · C {c} · F {f}': 'لكل 100 غ: {kcal} سعرة · ب {p} · ك {c} · د {f}',
-  'Name, e.g. Chicken & Rice prep': 'الاسم، مثلاً: تحضير دجاج وأرز',
-  'Saved to My Items ✓': 'حُفظت في عناصري ✓',
-  'Save as New Custom Meal': 'حفظ كوجبة مخصّصة جديدة',
-  'Add ingredients to see the macros per portion.': 'أضف المكوّنات لرؤية المغذيات لكل حصة.',
-  'Enter at least 1 portion.': 'أدخل حصة واحدة على الأقل.',
   'Add Ingredients': 'إضافة مكوّنات',
 
   // ---- Plan & Goals ----
@@ -322,7 +303,6 @@ const AR = {
   'Set {n} done': 'تمت المجموعة {n}',
   'Remove set {n}': 'إزالة المجموعة {n}',
   'Add Set': 'إضافة مجموعة',
-  'Swap {name}': 'استبدال {name}',
   'Save as Routine': 'حفظ كروتين',
   Saved: 'تم الحفظ',
   Volume: 'الحجم',

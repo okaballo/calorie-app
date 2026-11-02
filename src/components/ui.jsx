@@ -218,20 +218,6 @@ export const ChipRow = ({ label, children, bleed = '-mx-4 px-4' }) => (
   </div>
 )
 
-export const SunIcon = ({ className = 'h-6 w-6' }) => (
-  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <circle cx="12" cy="12" r="4.2" fill="currentColor" />
-    <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"
-      fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-)
-
-export const MoonIcon = ({ className = 'h-6 w-6' }) => (
-  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" />
-  </svg>
-)
-
 // GlassSwitch geometry (px): track width / height, knob width / height, gap.
 const SW = { T: 84, H: 28, KW: 36, KH: 34, P: 3 }
 const SW_TRAVEL = SW.T - SW.KW - 2 * SW.P
