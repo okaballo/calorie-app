@@ -5,14 +5,19 @@
 //   swap mode  (`replacing` = the exercise being swapped) opens on the same
 //              muscle with the closest alternatives first; one tap swaps.
 //
+// "Create custom exercise" adds the user's own exercise (CustomExerciseSheet),
+// kept in mt.customExercises and shown here like the built-in ones.
+//
 // "My equipment" is remembered (mt.gymEquipment), so someone whose gym has no
 // Smith machine or cables only ever sees exercises they can actually do.
-import { useMemo, useState } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence } from 'framer-motion'
-import { MUSCLES, EQUIPMENT, filterExercises, findAlternatives } from '../lib/exercisesDB.ts'
+import { MUSCLES, EQUIPMENT, filterExercises, findAlternatives, isCustomId, setCustomExercises } from '../lib/exercisesDB.ts'
+import { CustomExercisesContext } from '../lib/customExercisesContext.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
-import { Sheet, SearchInput, AddButton, Chip, ChipRow, muted, faint, accentText, divider } from './ui.jsx'
+import { Sheet, SearchInput, AddButton, Chip, ChipRow, ConfirmDialog, muted, faint, accentText, divider } from './ui.jsx'
+import CustomExerciseSheet from './CustomExerciseSheet.jsx'
 import { t } from '../lib/i18n.js'
 
 const CheckIcon = () => (
@@ -31,12 +36,17 @@ export const PickerPortal = ({ children }) => createPortal(
   document.body,
 )
 
-export default function ExercisePickerSheet({ replacing = null, onPick, onClose }) {
+export default function ExercisePickerSheet({ replacing = null, partnerOf = null, onPick, onClose }) {
   const swap = Boolean(replacing)
   const [query, setQuery] = useState('')
   const [muscle, setMuscle] = useState(replacing?.muscle ?? null)
   const [equipment, setEquipment] = useLocalStorage('mt.gymEquipment', [])
   const [selected, setSelected] = useState([]) // exercises, in tap order
+  const [creating, setCreating] = useState(false)
+  const [deleting, setDeleting] = useState(null) // custom exercise awaiting confirmation
+  const { list: custom, setList: setCustom } = useContext(CustomExercisesContext)
+  setCustomExercises(custom) // the lookups below read the registry; keep it in step with this render
+
 
   const toggleEquipment = (eq) =>
     setEquipment((list) => (list.includes(eq) ? list.filter((x) => x !== eq) : [...list, eq]))
@@ -45,7 +55,7 @@ export default function ExercisePickerSheet({ replacing = null, onPick, onClose 
     // Swapping with no search and the original muscle: best matches first.
     if (swap && !query.trim() && muscle === replacing.muscle) return findAlternatives(replacing.id, equipment)
     return filterExercises({ query, muscle, equipment }).filter((e) => e.id !== replacing?.id)
-  }, [swap, replacing, query, muscle, equipment])
+  }, [swap, replacing, query, muscle, equipment, custom])
 
   const isSelected = (ex) => selected.some((s) => s.id === ex.id)
   const toggle = (ex) => setSelected((list) => (isSelected(ex) ? list.filter((s) => s.id !== ex.id) : [...list, ex]))
@@ -63,7 +73,7 @@ export default function ExercisePickerSheet({ replacing = null, onPick, onClose 
 
   return (
     <Sheet
-      title={t(swap ? 'Swap Exercise' : 'Add Exercises')}
+      title={partnerOf ? t('Superset with {name}', { name: partnerOf }) : t(swap ? 'Swap Exercise' : 'Add Exercises')}
       variant="modal"
       z="z-50"
       onClose={onClose}
@@ -108,18 +118,35 @@ export default function ExercisePickerSheet({ replacing = null, onPick, onClose 
         </p>
       </div>
 
+      {!swap && (
+        <button onClick={() => setCreating(true)} className={`text-sm font-semibold ${accentText}`}>
+          + {t('Create custom exercise')}
+        </button>
+      )}
+
       <ul className={`divide-y ${divider}`}>
         {results.map((ex) => {
           const on = isSelected(ex)
           return (
             <li key={ex.id} className="flex items-center gap-3 py-2.5">
               <button onClick={() => tap(ex)} className="min-w-0 flex-1 text-start">
-                <p className="truncate text-sm font-medium">{ex.name}</p>
+                <p className="truncate text-sm font-medium">
+                  {ex.name}
+                  {ex.custom && <span className={`ms-2 rounded-full px-1.5 py-0.5 align-middle text-[10px] font-semibold bg-royal/10 dark:bg-royal/25 ${accentText}`}>{t('Custom')}</span>}
+                </p>
                 <p className={`truncate text-xs ${muted}`}>
                   <span className={accentText}>{t(ex.muscle)}</span> · {t(ex.equipment)}
                   {ex.secondary.length > 0 && <span className={faint}> · {ex.secondary.map((m) => t(m)).join(', ')}</span>}
                 </p>
               </button>
+              {ex.custom && isCustomId(ex.id) && (
+                <button
+                  onClick={() => setDeleting(ex)} aria-label={t('Delete {name}', { name: ex.name })}
+                  className={`shrink-0 px-1 text-lg leading-none ${faint}`}
+                >
+                  ×
+                </button>
+              )}
               {swap ? (
                 <button
                   onClick={() => tap(ex)}
@@ -143,6 +170,36 @@ export default function ExercisePickerSheet({ replacing = null, onPick, onClose 
         })}
         {results.length === 0 && <p className={`py-3 text-sm ${muted}`}>{t('No exercises match your filters.')}</p>}
       </ul>
+
+      <PickerPortal>
+        {creating && (
+          <CustomExerciseSheet
+            key="custom-exercise"
+            existingNames={custom.map((c) => c.name)}
+            onSave={(ex) => {
+              setCustom((list) => [...list, ex])
+              setCustomExercises([...custom, ex])
+              if (!swap) setSelected((list) => [...list, ex])
+              setQuery('')
+            }}
+            onClose={() => setCreating(false)}
+          />
+        )}
+      </PickerPortal>
+
+      {deleting && (
+        <ConfirmDialog
+          title={t('Delete {name}?', { name: deleting.name })}
+          message={t('Routines and workouts that use it keep its name.')}
+          confirmLabel={t('Delete')}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            setCustom((list) => list.filter((c) => c.id !== deleting.id))
+            setSelected((list) => list.filter((s) => s.id !== deleting.id))
+            setDeleting(null)
+          }}
+        />
+      )}
     </Sheet>
   )
 }

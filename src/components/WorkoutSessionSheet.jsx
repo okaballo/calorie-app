@@ -10,7 +10,10 @@
 // no source routine (e.g. a repeated one) asks for a name and saves a new one.
 import { useState } from 'react'
 import { fmt0 } from '../lib/calc.js'
-import { EMPTY_WORKOUT, newEntry, newSet, exerciseOf, workoutStats, lastSets, bestSets, toRoutine } from '../lib/workouts.js'
+import {
+  EMPTY_WORKOUT, newEntry, newSet, exerciseOf, workoutStats, lastSets, bestSets, toRoutine, swapEntry,
+  addPartners, unlink, removeEntryFrom, moveEntry, tidyGroups, toggleDropSet, supersetTags, addDrop, patchDrop, removeDrop,
+} from '../lib/workouts.js'
 import {
   Card, PrimaryButton, Sheet, TextInput, ConfirmDialog, NameDialog, muted, accentText,
 } from './ui.jsx'
@@ -18,13 +21,16 @@ import ExerciseCard from './ExerciseCard.jsx'
 import ExercisePickerSheet, { PickerPortal } from './ExercisePickerSheet.jsx'
 import { t } from '../lib/i18n.js'
 
+// What Save compares: the exercises in order, with their supersets and drop sets.
+const shape = (list) => tidyGroups(list).map((e) => `${e.exerciseId}|${e.group ? 1 : 0}|${e.dropSet ? 1 : 0}`).join()
+
 export default function WorkoutSessionSheet({
-  dayLabel, workout, history, day, routines, onUpdate, onFinish, onSaveRoutine, onClose,
+  dayLabel, workout, history, day, routines, bodyWeight = 0, onUpdate, onFinish, onSaveRoutine, onClose,
 }) {
   const stats = workoutStats(workout)
   const hasExercises = workout.exercises.length > 0
 
-  const [picker, setPicker] = useState(null)            // null | { replacing: entry | null }
+  const [picker, setPicker] = useState(null)            // null | { replacing: entry | null, partnerOf?: entry }
   const [naming, setNaming] = useState(false)           // name dialog for a workout with no source routine
   const [savedFlash, setSavedFlash] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
@@ -44,20 +50,24 @@ export default function WorkoutSessionSheet({
     const i = e.sets.findIndex((s) => s.id === setId)
     return { ...e, sets: e.sets.filter((_, j) => j !== i), plan: e.plan?.filter((_, j) => j !== i) }
   })
-  const removeEntry = (id) => update((w) => ({ ...w, exercises: w.exercises.filter((e) => e.id !== id) }))
+  const setExercises = (fn) => update((w) => ({ ...w, exercises: fn(w.exercises) }))
+  const tags = supersetTags(workout.exercises)
 
   const addExercises = (list) => update((w) => ({
     ...w,
-    exercises: [...w.exercises, ...list.map((ex) => newEntry(ex, lastSets(history, ex.id, day)))],
+    exercises: [...w.exercises, ...list.map((ex) => newEntry(ex, lastSets(history, ex.id, day), bodyWeight))],
   }))
+  // Superset: the picked exercises go right after this one, in its group.
+  const addPartnerExercises = (id, list) => setExercises((all) => addPartners(
+    all, id, list.map((ex) => newEntry(ex, lastSets(history, ex.id, day), bodyWeight)),
+  ))
   // Logged sets are kept; planned weights were for the old exercise, so they go.
-  // eslint-disable-next-line no-unused-vars
-  const swapExercise = (entryId, ex) => setEntry(entryId, ({ plan, ...e }) => ({ ...e, exerciseId: ex.id, name: ex.name }))
+  const swapExercise = (entryId, ex) => setEntry(entryId, (e) => swapEntry(e, ex, bodyWeight))
 
   // The routine this workout was started from, if it still exists.
   const source = routines.find((r) => r.id === workout.routineId)
   const changed = source
-    ? source.exercises.map((e) => e.exerciseId).join() !== workout.exercises.map((e) => e.exerciseId).join()
+    ? shape(source.exercises) !== shape(workout.exercises)
     : hasExercises
   const flash = () => {
     setSavedFlash(true)
@@ -119,19 +129,29 @@ export default function WorkoutSessionSheet({
         </div>
       </Card>
 
-      {workout.exercises.map((entry) => (
-        <ExerciseCard
-          key={entry.id}
-          entry={entry}
-          previous={lastSets(history, entry.exerciseId, day)}
-          best={bestSets(history, entry.exerciseId, day)}
-          onSwap={() => setPicker({ replacing: entry })}
-          onRemove={() => removeEntry(entry.id)}
-          onSet={(setId, patch) => setSet(entry.id, setId, patch)}
-          onAddSet={() => addSet(entry.id)}
-          onRemoveSet={(setId) => removeSet(entry.id, setId)}
-        />
-      ))}
+      <div className="space-y-4">
+        {workout.exercises.map((entry) => (
+          <ExerciseCard
+            key={entry.id}
+            entry={entry}
+            previous={lastSets(history, entry.exerciseId, day)}
+            best={bestSets(history, entry.exerciseId, day)}
+            tag={tags[entry.id]}
+            onSwap={() => setPicker({ replacing: entry })}
+            onRemove={() => setExercises((list) => removeEntryFrom(list, entry.id))}
+            onAddPartner={() => setPicker({ replacing: null, partnerOf: entry })}
+            onMove={(dir) => setExercises((list) => moveEntry(list, entry.id, dir))}
+            onUnlink={() => setExercises((list) => unlink(list, entry.id))}
+            onToggleDropSet={() => setEntry(entry.id, toggleDropSet)}
+            onSet={(setId, patch) => setSet(entry.id, setId, patch)}
+            onAddSet={() => addSet(entry.id)}
+            onRemoveSet={(setId) => removeSet(entry.id, setId)}
+            onDrop={(setId, dropId, patch) => setEntry(entry.id, (e) => patchDrop(e, setId, dropId, patch))}
+            onAddDrop={(setId) => setEntry(entry.id, (e) => addDrop(e, setId))}
+            onRemoveDrop={(setId, dropId) => setEntry(entry.id, (e) => removeDrop(e, setId, dropId))}
+          />
+        ))}
+      </div>
 
       {!hasExercises && <p className={`px-1 text-center text-sm ${muted}`}>{t('No exercises logged for this day yet.')}</p>}
       <PrimaryButton onClick={() => setPicker({ replacing: null })}>+ {t('Add Exercise')}</PrimaryButton>
@@ -155,7 +175,12 @@ export default function WorkoutSessionSheet({
           <ExercisePickerSheet
             key="exercise-picker"
             replacing={picker.replacing && exerciseOf(picker.replacing)}
-            onPick={(list) => (picker.replacing ? swapExercise(picker.replacing.id, list[0]) : addExercises(list))}
+            partnerOf={picker.partnerOf && exerciseOf(picker.partnerOf).name}
+            onPick={(list) => {
+              if (picker.replacing) swapExercise(picker.replacing.id, list[0])
+              else if (picker.partnerOf) addPartnerExercises(picker.partnerOf.id, list)
+              else addExercises(list)
+            }}
             onClose={() => setPicker(null)}
           />
         )}

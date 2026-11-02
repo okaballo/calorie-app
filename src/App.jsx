@@ -14,6 +14,7 @@
 //   mt.workoutHistory    finished workouts
 //   mt.workoutTemplates  saved workout routines (key kept from before the rename)
 //   mt.gymEquipment      equipment filter of the exercise picker
+//   mt.customExercises   the user's own exercises (lib/exercisesDB.ts)
 import { memo, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion,
@@ -26,6 +27,8 @@ import { useLocalStorage } from './lib/useLocalStorage.js'
 import { dayKey, nextTrackingDay, mealDay, parseDay, previousDay } from './lib/calc.js'
 import { isRTL, setLanguage, t } from './lib/i18n.js'
 import { EMPTY_WORKOUT, isEmptyWorkout, isLive } from './lib/workouts.js'
+import { setCustomExercises } from './lib/exercisesDB.ts'
+import { CustomExercisesContext } from './lib/customExercisesContext.js'
 import Home from './tabs/Home.jsx'
 import Analytics from './components/Analytics.jsx'
 import Workout from './tabs/Workout.jsx'
@@ -337,6 +340,9 @@ export default function App() {
   const [dailyWorkouts, setDailyWorkouts] = useLocalStorage('mt.dailyWorkouts', {}) // tracking day -> workout
   const [workoutTemplates, setWorkoutTemplates] = useLocalStorage('mt.workoutTemplates', [])
   const [workoutHistory, setWorkoutHistory] = useLocalStorage('mt.workoutHistory', [])
+  // The exercise database reads the user's own exercises from here, so register them before any screen renders.
+  const [customExercises, setCustomList] = useLocalStorage('mt.customExercises', [])
+  setCustomExercises(customExercises)
 
   // Finishing moves the day's workout into the history, freeing the day.
   const finishWorkout = (day) => {
@@ -644,12 +650,13 @@ export default function App() {
     // Logs to the same day Home is showing, so a forgotten workout can be
     // added by picking its date on Home first.
     Workout: (
+      <CustomExercisesContext.Provider value={{ list: customExercises, setList: setCustomList }}>
       <Workout
         day={shownDay} activeDate={activeDay.date}
         workouts={dailyWorkouts} history={workoutHistory} onUpdate={updateWorkout}
         onFinish={finishWorkout}
         onDeleteWorkout={(id) => setWorkoutHistory((list) => list.filter((x) => x.id !== id))}
-        routines={workoutTemplates}
+        routines={workoutTemplates} bodyWeight={planProfile.weightKg}
         // A saved routine replaces the one with its id (editing); a new one goes first.
         onSaveRoutine={(routine) => setWorkoutTemplates((list) => (
           list.some((x) => x.id === routine.id) ? list.map((x) => (x.id === routine.id ? routine : x)) : [routine, ...list]
@@ -657,6 +664,7 @@ export default function App() {
         onDeleteRoutine={(id) => setWorkoutTemplates((list) => list.filter((x) => x.id !== id))}
         onBackToToday={() => setViewDay(null)}
       />
+      </CustomExercisesContext.Provider>
     ),
     Weight: (
       <Weight
@@ -675,7 +683,7 @@ export default function App() {
       />
     ),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [profile, planProfile, avatar, meals, activeDay, shownDay, weights, cheatDays, dailyWorkouts, workoutHistory, workoutTemplates, theme, lang])
+  }), [profile, planProfile, avatar, meals, activeDay, shownDay, weights, cheatDays, dailyWorkouts, workoutHistory, workoutTemplates, customExercises, theme, lang])
 
   return (
     // fixed + inset-0 pins the app to the real screen edges. A height of 100%

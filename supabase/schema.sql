@@ -51,12 +51,17 @@ create table if not exists public.profiles (
   custom_foods   jsonb check (custom_foods is null or (jsonb_typeof(custom_foods) = 'array' and pg_column_size(custom_foods) <= 1048576)),
   saved_meals    jsonb check (saved_meals is null or (jsonb_typeof(saved_meals) = 'array' and pg_column_size(saved_meals) <= 1048576)),
   routines       jsonb check (routines is null or (jsonb_typeof(routines) = 'array' and pg_column_size(routines) <= 524288)),
+  custom_exercises jsonb check (custom_exercises is null or (jsonb_typeof(custom_exercises) = 'array' and pg_column_size(custom_exercises) <= 262144)),
   cheat_days     jsonb check (cheat_days is null or (jsonb_typeof(cheat_days) = 'array' and pg_column_size(cheat_days) <= 65536)),
   active_day     jsonb check (active_day is null or (jsonb_typeof(active_day) = 'object' and pg_column_size(active_day) <= 1024)),
   live_workouts  jsonb check (live_workouts is null or (jsonb_typeof(live_workouts) = 'object' and pg_column_size(live_workouts) <= 262144)),
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
+
+-- Added after the first release: run this on a database created before it.
+alter table public.profiles add column if not exists custom_exercises jsonb
+  check (custom_exercises is null or (jsonb_typeof(custom_exercises) = 'array' and pg_column_size(custom_exercises) <= 262144));
 
 -- ---------------------------------------------------------------------------
 -- meals_log: one row per logged meal (its foods with per-100 g values + grams)

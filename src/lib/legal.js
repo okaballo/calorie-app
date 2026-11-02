@@ -18,7 +18,7 @@ export const PRIVACY = {
       ul: [
         'Your meals, weight, workouts and settings are saved on your device and work without an internet connection.',
         'Cloud Sync is optional. If you never turn it on, nothing you enter is sent to us.',
-        'You sign in only with Google or Apple. KiBase never asks for or stores a password.',
+        'To use Cloud Sync you create an account with your email and a password, and confirm your email. Your password is stored only in scrambled (hashed) form by our sign-in provider; we can never read it.',
         'No ads, no analytics, no tracking, and we never sell your data.',
         'You can export your data, and you can ask us to delete your cloud data at any time.',
       ],
@@ -45,9 +45,9 @@ export const PRIVACY = {
     },
     {
       h: 'Cloud Sync (optional)',
-      p: ['If you turn on Cloud Sync, you sign in with Google or Apple. We then handle:'],
+      p: ['If you turn on Cloud Sync, you create an account with your email address and a password and confirm your email through a link we send you. We then handle:'],
       ul: [
-        'Your name and email address, as shared by Google or Apple (Apple lets you hide your real email). These are kept by our authentication provider.',
+        'Your email address and your password. The password is stored only as a salted hash by our authentication provider, never in readable form, and we cannot see it.',
         'A copy of the KiBase data listed above, stored in your private space in our cloud database so it can be backed up and shared between your devices.',
         'A sign-in session token, saved on your device so you stay signed in.',
       ],
@@ -59,7 +59,7 @@ export const PRIVACY = {
     {
       h: 'What we do not collect',
       ul: [
-        'Passwords (sign-in is handled by Google or Apple)',
+        'Any sign-in details other than your email and password',
         'Your location, contacts, camera or microphone data',
         'Payment details (KiBase is free and has no purchases)',
         'Advertising identifiers or analytics about how you use the app',
@@ -89,7 +89,7 @@ export const PRIVACY = {
       p: ['We share information only with the providers that make KiBase work, and only for that purpose:'],
       ul: [
         'Supabase, which provides our sign-in and cloud database (only when you use Cloud Sync).',
-        'Google or Apple, when you choose to sign in with them. They receive your sign-in request under their own privacy policies.',
+        'Our email delivery service, which sends the verification email to the address you give us.',
         'GitHub, which hosts the app’s files. Like any web host, it may log technical details such as your IP address when the app loads. We do not receive or analyze these logs.',
       ],
       after: [
@@ -129,7 +129,7 @@ export const PRIVACY = {
     {
       h: 'Security',
       p: [
-        'Data sent to the cloud travels over encrypted connections, and each account can reach only its own rows in the database. Still, no method of transmission or storage is 100% secure, so we cannot guarantee absolute security. Keep your device and your Google or Apple account secure.',
+        'Data sent to the cloud travels over encrypted connections, and each account can reach only its own rows in the database. Still, no method of transmission or storage is 100% secure, so we cannot guarantee absolute security. Keep your device secure and choose a strong, unique password.',
       ],
     },
     {
@@ -181,7 +181,7 @@ export const TERMS = {
     {
       h: 'Your account',
       p: [
-        'Cloud Sync uses sign-in with Google or Apple. You are responsible for your Google or Apple account, your device, and everything done through them. Tell us promptly if you think someone has accessed your account. We may suspend or remove access to Cloud Sync if these terms are broken or to protect the service.',
+        'Cloud Sync uses an account made with your email address and a password. You must give a real email address you control and confirm it using the link we send. Choose a strong password, keep it secret, and keep your device secure; you are responsible for everything done through your account. Tell us promptly if you think someone has accessed it. We may suspend or remove access to Cloud Sync if these terms are broken or to protect the service.',
       ],
     },
     {

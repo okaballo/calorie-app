@@ -18,7 +18,7 @@ import { AnimatePresence } from 'framer-motion'
 import { fmt0, parseDay } from '../lib/calc.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import {
-  EMPTY_WORKOUT, byRecent, exerciseOf, formatDuration, isLive, isLogged, routineVolume, setText, startEntries, toRoutine,
+  EMPTY_WORKOUT, byRecent, exerciseOf, isBodyweight, formatDuration, isLive, isLogged, routineVolume, setText, startEntries, toRoutine,
   workoutStats,
 } from '../lib/workouts.js'
 import {
@@ -46,7 +46,7 @@ function Elapsed({ startedAt, className = '' }) {
 
 export default function Workout({
   day, activeDate, workouts, history, onUpdate, onFinish, onDeleteWorkout,
-  routines, onSaveRoutine, onDeleteRoutine, onBackToToday,
+  routines, bodyWeight, onSaveRoutine, onDeleteRoutine, onBackToToday,
 }) {
   // Only the workout in progress lives in `workouts`; finished ones are in `history`.
   const workout = workouts[day] ?? EMPTY_WORKOUT
@@ -65,7 +65,7 @@ export default function Workout({
   const start = (routine) => {
     onUpdate(day, (w) => ({
       name: w.name.trim() ? w.name : routine.name,
-      exercises: [...w.exercises, ...startEntries(routine)],
+      exercises: [...w.exercises, ...startEntries(routine, bodyWeight)],
       startedAt: isLive(w) ? w.startedAt : Date.now(),
       // the routine Save (in the logging screen) writes back to
       routineId: isLive(w) && w.routineId ? w.routineId : routine.id,
@@ -245,7 +245,7 @@ export default function Workout({
                       {h.exercises.map((e) => (
                         <p key={e.id} className="text-xs">
                           <span className="font-medium">{exerciseOf(e).name}</span>
-                          <span className={`tabular-nums ${muted}`}> · {e.sets.filter(isLogged).map(setText).join(', ') || '–'}</span>
+                          <span className={`tabular-nums ${muted}`}> · {e.sets.filter(isLogged).map((s) => setText(s, isBodyweight(exerciseOf(e)))).join(', ') || '–'}</span>
                         </p>
                       ))}
                       <button
@@ -283,7 +283,7 @@ export default function Workout({
               <WorkoutSessionSheet
                 key="session"
                 day={day} dayLabel={dayLabel(day)}
-                workout={workout} history={history} routines={routines}
+                workout={workout} history={history} routines={routines} bodyWeight={bodyWeight}
                 onUpdate={onUpdate} onFinish={onFinish} onSaveRoutine={onSaveRoutine}
                 onClose={() => setSession(false)}
               />
@@ -291,7 +291,7 @@ export default function Workout({
             {routineEditing && (
               <RoutineSheet
                 key="routine"
-                routine={routineEditing === 'new' ? null : routineEditing}
+                routine={routineEditing === 'new' ? null : routineEditing} bodyWeight={bodyWeight}
                 onSave={onSaveRoutine} onDelete={onDeleteRoutine}
                 onClose={() => setRoutineEditing(null)}
               />

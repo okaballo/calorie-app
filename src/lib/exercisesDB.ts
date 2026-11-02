@@ -306,6 +306,106 @@ export const EXERCISES: Exercise[] = MUSCLES.flatMap((muscle) =>
 
 export const EXERCISE_BY_ID: Record<string, Exercise> = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
 
+// ---- The user's own exercises ------------------------------------------------
+// Stored by the app (mt.customExercises) and registered here, so every lookup
+// below sees them like built-in ones. Ids start with "custom-" so they can
+// never clash with a built-in id.
+
+export interface CustomExercise extends Exercise {
+  custom: true
+}
+
+let CUSTOM: CustomExercise[] = []
+const CUSTOM_BY_ID: Record<string, CustomExercise> = {}
+
+export const isCustomId = (id: string) => id.startsWith('custom-')
+
+/** Registers the user's exercises (call with the whole saved list; safe to repeat). */
+export function setCustomExercises(list: CustomExercise[]) {
+  CUSTOM = (Array.isArray(list) ? list : []).filter((e) => e && e.id && e.name && MUSCLES.includes(e.muscle))
+  for (const k of Object.keys(CUSTOM_BY_ID)) delete CUSTOM_BY_ID[k]
+  for (const e of CUSTOM) CUSTOM_BY_ID[e.id] = e
+}
+
+/** A built-in or custom exercise by id. */
+export const getExercise = (id: string): Exercise | undefined => EXERCISE_BY_ID[id] ?? CUSTOM_BY_ID[id]
+
+export function makeCustomExercise(
+  name: string, muscle: Muscle, secondary: Muscle[], equipment: Equipment,
+): CustomExercise {
+  return {
+    id: `custom-${crypto.randomUUID()}`,
+    name: name.trim(), muscle, equipment,
+    secondary: secondary.filter((m) => m !== muscle),
+    custom: true,
+  }
+}
+
+// ---- Splits ------------------------------------------------------------------
+// Suggested ways to divide the week, each day with a short list of staple
+// exercises (by name). The "Splits suggestions" screen of the routine editor
+// shows them and adds them to a routine.
+
+export interface SplitDay { name: string; muscles: Muscle[]; exercises: string[] }
+export interface Split { id: string; name: string; note: string; days: SplitDay[] }
+
+const PUSH = ['Barbell Bench Press', 'Incline Dumbbell Press', 'Cable Crossover', 'Overhead Press', 'Dumbbell Lateral Raise', 'Rope Pushdown', 'Overhead Cable Extension']
+const PULL = ['Barbell Row', 'Lat Pulldown', 'Seated Cable Row', 'Face Pull', 'Barbell Shrug', 'Barbell Curl', 'Hammer Curl']
+const LEGS = ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Extension', 'Lying Leg Curl', 'Standing Calf Raise Machine', 'Cable Crunch']
+
+export const SPLITS: Split[] = [
+  {
+    id: 'ppl', name: 'Push / Pull / Legs', note: '3 or 6 days a week',
+    days: [
+      { name: 'Push', muscles: ['Chest', 'Shoulders', 'Triceps'], exercises: PUSH },
+      { name: 'Pull', muscles: ['Back', 'Traps', 'Biceps', 'Forearms'], exercises: PULL },
+      { name: 'Legs', muscles: ['Quads', 'Hamstrings', 'Calves', 'Abs'], exercises: LEGS },
+    ],
+  },
+  {
+    id: 'upper-lower', name: 'Upper / Lower', note: '4 days a week',
+    days: [
+      {
+        name: 'Upper', muscles: ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps'],
+        exercises: ['Barbell Bench Press', 'Barbell Row', 'Overhead Press', 'Lat Pulldown', 'Incline Dumbbell Press', 'Dumbbell Lateral Raise', 'Barbell Curl', 'Rope Pushdown'],
+      },
+      {
+        name: 'Lower', muscles: ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs'],
+        exercises: ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Lying Leg Curl', 'Barbell Hip Thrust', 'Standing Calf Raise Machine', 'Plank'],
+      },
+    ],
+  },
+  {
+    id: 'full-body', name: 'Full Body', note: '2 to 3 days a week',
+    days: [{
+      name: 'Full Body', muscles: ['Quads', 'Chest', 'Back', 'Shoulders', 'Hamstrings', 'Abs'],
+      exercises: ['Back Squat', 'Barbell Bench Press', 'Barbell Row', 'Overhead Press', 'Romanian Deadlift', 'Pull-Up', 'Plank'],
+    }],
+  },
+  {
+    id: 'bro', name: 'Body Part (Bro Split)', note: '5 days a week',
+    days: [
+      { name: 'Chest', muscles: ['Chest'], exercises: ['Barbell Bench Press', 'Incline Dumbbell Press', 'Chest Press Machine', 'Cable Crossover', 'Chest Dip'] },
+      { name: 'Back', muscles: ['Back', 'Traps'], exercises: ['Deadlift', 'Pull-Up', 'Barbell Row', 'Lat Pulldown', 'Seated Cable Row', 'Barbell Shrug'] },
+      { name: 'Shoulders', muscles: ['Shoulders'], exercises: ['Overhead Press', 'Dumbbell Lateral Raise', 'Rear Delt Dumbbell Fly', 'Face Pull', 'Arnold Press', 'Dumbbell Shrug'] },
+      { name: 'Arms', muscles: ['Biceps', 'Triceps', 'Forearms'], exercises: ['Barbell Curl', 'Hammer Curl', 'Incline Dumbbell Curl', 'Skull Crusher', 'Rope Pushdown', 'Overhead Dumbbell Extension'] },
+      { name: 'Legs', muscles: ['Quads', 'Hamstrings', 'Calves', 'Abs'], exercises: LEGS },
+    ],
+  },
+  {
+    id: 'arnold', name: 'Arnold Split', note: '6 days a week',
+    days: [
+      { name: 'Chest & Back', muscles: ['Chest', 'Back'], exercises: ['Barbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Fly', 'Pull-Up', 'Barbell Row', 'Seated Cable Row'] },
+      { name: 'Shoulders & Arms', muscles: ['Shoulders', 'Biceps', 'Triceps'], exercises: ['Overhead Press', 'Dumbbell Lateral Raise', 'Rear Delt Dumbbell Fly', 'Barbell Curl', 'Hammer Curl', 'Close-Grip Bench Press', 'Rope Pushdown'] },
+      { name: 'Legs', muscles: ['Quads', 'Hamstrings', 'Calves', 'Abs'], exercises: LEGS },
+    ],
+  },
+]
+
+/** The built-in exercises behind a split day's suggested names. */
+export const splitDayExercises = (day: SplitDay): Exercise[] =>
+  day.exercises.map((n) => EXERCISES.find((e) => e.name === n)).filter((e): e is Exercise => Boolean(e))
+
 export interface ExerciseFilter {
   query?: string
   muscle?: Muscle | null
@@ -316,7 +416,8 @@ export interface ExerciseFilter {
 /** Exercises matching a search text, a muscle (primary only) and the user's equipment. */
 export function filterExercises({ query = '', muscle = null, equipment = [] }: ExerciseFilter): Exercise[] {
   const q = query.trim().toLowerCase()
-  return EXERCISES.filter((e) =>
+  const all = CUSTOM.length ? [...EXERCISES, ...CUSTOM].sort((a, b) => a.name.localeCompare(b.name)) : EXERCISES
+  return all.filter((e) =>
     (!muscle || e.muscle === muscle) &&
     (equipment.length === 0 || equipment.includes(e.equipment)) &&
     (!q || e.name.toLowerCase().includes(q) || e.equipment.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)),
@@ -329,7 +430,7 @@ export function filterExercises({ query = '', muscle = null, equipment = [] }: E
  * then other equipment types before more of the same.
  */
 export function findAlternatives(id: string, equipment: Equipment[] = []): Exercise[] {
-  const base = EXERCISE_BY_ID[id]
+  const base = getExercise(id)
   if (!base) return []
   const overlap = (e: Exercise) => e.secondary.filter((m) => base.secondary.includes(m)).length
   return filterExercises({ muscle: base.muscle, equipment })

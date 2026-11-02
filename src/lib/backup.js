@@ -34,6 +34,7 @@ const SCHEMA = {
   'mt.workoutHistory': arrayOf(isObject),
   'mt.workoutTemplates': arrayOf(isObject),
   'mt.gymEquipment': arrayOf((e) => typeof e === 'string'),
+  'mt.customExercises': arrayOf(isObject),
   'mt.volumeRoutine': (v) => v === null || typeof v === 'string',
 }
 

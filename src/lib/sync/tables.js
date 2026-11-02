@@ -91,6 +91,7 @@ export const PROFILE_FIELDS = [
   { key: 'mt.customFoods', column: 'custom_foods', merge: unionById },
   { key: 'mt.templates', column: 'saved_meals', merge: unionById },
   { key: 'mt.workoutTemplates', column: 'routines', merge: unionById },
+  { key: 'mt.customExercises', column: 'custom_exercises', merge: unionById },
   { key: 'mt.cheatDays', column: 'cheat_days', merge: unionValues },
   { key: 'mt.activeDay', column: 'active_day' },
   { key: 'mt.dailyWorkouts', column: 'live_workouts' },

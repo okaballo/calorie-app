@@ -1,4 +1,4 @@
-# Cloud Sync setup (Supabase + Google / Apple)
+# Cloud Sync setup (Supabase, email + password)
 
 KiBase stays **local-first**: every screen reads and writes `localStorage` instantly,
 offline included. Supabase is an optional background copy used for backup and for
@@ -18,18 +18,36 @@ local-only (the Cloud Sync card is hidden).
    where schemaname = 'public' and tablename in ('profiles','meals_log','weight_log','workouts_log');
    ```
 
-## 2. Sign-in providers (no passwords anywhere)
+## 2. Sign-in: email + password, confirmed by an emailed link
 
-**Authentication > Sign In / Providers**
-- **Email: turn it off.** Only Google and Apple are used, so nobody can create a password account.
+The app creates accounts with an email and a password. Supabase stores the password
+as a salted hash; KiBase never sees it.
+
+**Authentication > Sign In / Providers > Email**
+- Turn **Email** on and **Confirm email** on (people must open the link before they can log in).
+- **Minimum password length: 8**. Under password requirements, require **lowercase, uppercase,
+  digits and symbols**. The app already enforces upper case + number + symbol on the device;
+  this makes Supabase enforce it too (nobody can skip the app).
+- Optional: turn on *Prevent use of leaked passwords* (Pro plan).
+
+**Email delivery (important)**: Supabase's built-in mail sender only delivers to your own team
+members and is limited to a couple of emails per hour. Before real users sign up, set up
+**Authentication > Emails > SMTP Settings** with a provider (Resend, Brevo, Postmark, ...).
+Edit the **Confirm signup** template if you want it in KiBase's words; keep `{{ .ConfirmationURL }}`.
+
+### Google / Apple sign-in: switched off for now
+The app has the code for Google and Apple buttons, commented out in
+`src/components/CloudSync.jsx` (search for "switched off"). To bring them back:
 - **Google**: in Google Cloud Console create an OAuth client ID (type *Web application*).
   Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`.
-  Paste the client ID and secret into Supabase.
+  Paste the client ID and secret into Supabase (**Authentication > Sign In / Providers > Google**),
+  then uncomment the buttons.
 - **Apple**: needs a paid Apple Developer account. Create an App ID with *Sign in with
   Apple*, a **Services ID** (this is the client ID) with the return URL
   `https://<your-project-ref>.supabase.co/auth/v1/callback`, and a Sign in with Apple
   key (.p8). Supabase's Apple page generates the client secret from the key.
   **The web client secret expires every 6 months**: set a reminder to regenerate it.
+- Update the Privacy Policy and Terms text in `src/lib/legal.js` to mention them again.
 
 **Authentication > URL Configuration**
 - Site URL: `https://okaballo.github.io/calorie-app/`
@@ -47,6 +65,14 @@ cp .env.example .env.local      # then fill in the two values
 Never the `service_role` key. `.env*` files are git-ignored. `npm run deploy` builds
 with `.env.local`, so the deployed site gets the values.
 
+## After the person taps the email link
+
+The link verifies the account at Supabase, then sends the person back to this app
+(`Site URL` / the redirect list above). The app shows an **Account verified** screen.
+If the link was opened on the same browser the person is also signed in; if it was opened
+elsewhere (e.g. a different phone browser), the screen asks them to log in. An expired or
+used link shows **Link expired**; they can sign up again or log in and tap *Resend Email*.
+
 ## What is stored where
 
 | On the device (localStorage) | In Supabase |
@@ -60,9 +86,9 @@ with `.env.local`, so the deployed site gets the values.
 `kb.*` keys are never included in backup files, so a backup never carries a session
 token or another device's sync state.
 
-The only personal data Supabase holds besides the user's KiBase data is what the
-provider sends at sign-in (name and email, or Apple's private relay email), kept in
-Supabase's own protected `auth.users` table. KiBase never sees or stores a password.
+The only personal data Supabase holds besides the user's KiBase data is the email address
+and the hashed password, kept in Supabase's own protected `auth.users` table. KiBase never
+sees or stores a readable password.
 
 ## How sync behaves
 

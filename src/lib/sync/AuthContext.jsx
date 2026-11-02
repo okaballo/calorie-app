@@ -1,4 +1,4 @@
-// Sign-in state for the whole app (Google / Apple through Supabase) and the bridge
+// Sign-in state for the whole app (email + password through Supabase; Google / Apple code is kept but switched off) and the bridge
 // to the sync engine: signing in starts background sync, signing out stops it.
 //
 // Signing in is optional: without an account KiBase works exactly as before,
@@ -31,12 +31,30 @@ function cleanUrl() {
   if (dirty) window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
 }
 
+/**
+ * How the person arrived: the link in the verification email sends them back with
+ * ?code= (account verified) or with an error such as an expired link. Read once,
+ * before the leftovers are cleaned out of the address bar.
+ */
+function readArrival() {
+  if (typeof window === 'undefined') return null
+  const q = new URLSearchParams(window.location.search)
+  const h = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  if (q.get('error_code') || h.get('error_code') || h.get('error') || q.get('error')) {
+    const code = q.get('error_code') || h.get('error_code') || ''
+    return code.includes('expired') || code.includes('otp') ? 'expired' : null
+  }
+  return q.has('code') ? 'verified' : null
+}
+const arrivalAtLoad = readArrival()
+
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(cloudConfigured ? undefined : null) // undefined: still reading the saved session
   const [busy, setBusy] = useState(null)                                    // 'google' | 'apple' while leaving for sign-in
-  const [authError, setAuthError] = useState(readOAuthError)
+  const [authError, setAuthError] = useState(() => (arrivalAtLoad ? null : readOAuthError()))
+  const [arrival, setArrival] = useState(arrivalAtLoad)                    // 'verified' | 'expired' | null
   const [switchTo, setSwitchTo] = useState(null)                            // another account signed in: ask first
 
   // The saved session (works offline) and later sign-in / sign-out events.
@@ -87,6 +105,54 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // ---- Email + password ----
+  // Each returns { ok: true } or { error: code }; the sign-up screen words the codes.
+  const fail = (e) => {
+    const msg = String(e?.message || '').toLowerCase()
+    const code = e?.code || ''
+    if (e?.name === 'AuthRetryableFetchError' || /fetch|network/.test(msg)) return { error: 'offline' }
+    if (code === 'email_not_confirmed' || msg.includes('not confirmed')) return { error: 'unconfirmed' }
+    if (code === 'invalid_credentials' || msg.includes('invalid login')) return { error: 'invalid' }
+    if (code === 'user_already_exists' || msg.includes('already registered')) return { error: 'exists' }
+    if (code === 'weak_password' || msg.includes('password')) return { error: 'weak' }
+    // The project's email sending limit (Supabase's built-in mail sender allows only a couple per hour):
+    // not something this person did wrong, and no amount of retrying helps until SMTP is set up.
+    if (code === 'over_email_send_rate_limit' || msg.includes('email rate limit')) return { error: 'emailLimit' }
+    if (e?.status === 429 || code.includes('rate_limit') || msg.includes('rate limit') || msg.includes('seconds')) return { error: 'rate' }
+    return { error: 'unknown' }
+  }
+  const offline = () => typeof navigator !== 'undefined' && navigator.onLine === false
+
+  const signUpEmail = useCallback(async (email, password) => {
+    if (offline()) return { error: 'offline' }
+    try {
+      const { supabase, authRedirectUrl } = await loadSupabase()
+      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: authRedirectUrl() } })
+      if (error) return fail(error)
+      // An address that already has an account comes back with no identities (and no email is sent).
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return { error: 'exists' }
+      return { ok: true, needsConfirm: !data.session }
+    } catch (e) { return fail(e) }
+  }, [])
+
+  const signInEmail = useCallback(async (email, password) => {
+    if (offline()) return { error: 'offline' }
+    try {
+      const { supabase } = await loadSupabase()
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      return error ? fail(error) : { ok: true }
+    } catch (e) { return fail(e) }
+  }, [])
+
+  const resendVerification = useCallback(async (email) => {
+    if (offline()) return { error: 'offline' }
+    try {
+      const { supabase, authRedirectUrl } = await loadSupabase()
+      const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: authRedirectUrl() } })
+      return error ? fail(error) : { ok: true }
+    } catch (e) { return fail(e) }
+  }, [])
+
   const signOut = useCallback(async () => {
     await engine.flush()                          // send what is pending first (best effort, a few seconds)
     try {
@@ -118,12 +184,17 @@ export function AuthProvider({ children }) {
     authError,
     clearError: () => setAuthError(null),
     signIn,
+    signUpEmail,
+    signInEmail,
+    resendVerification,
+    arrival,
+    dismissArrival: () => setArrival(null),
     signOut,
     switchPending: Boolean(switchTo),
     confirmSwitch,
     cancelSwitch,
     syncNow: () => engine.syncNow({ pull: true }),
-  }), [session, busy, authError, signIn, signOut, switchTo, confirmSwitch, cancelSwitch])
+  }), [session, busy, authError, arrival, signIn, signUpEmail, signInEmail, resendVerification, signOut, switchTo, confirmSwitch, cancelSwitch])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
