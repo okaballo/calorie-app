@@ -11,6 +11,7 @@
 //
 // The tab is deliberately short. Everything detailed opens as its own screen:
 //   Add New Routine / pencil   RoutineSheet: build or edit a routine
+//   Splits Suggestions         SplitsSheet: pick exercises for a new routine
 //   Start / Continue Routine   WorkoutSessionSheet: log the sets
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -28,6 +29,7 @@ import { LineChart } from '../components/Charts.jsx'
 import OptionMenu from '../components/OptionMenu.jsx'
 import WorkoutSessionSheet from '../components/WorkoutSessionSheet.jsx'
 import RoutineSheet from '../components/RoutineSheet.jsx'
+import SplitsSheet from '../components/SplitsSheet.jsx'
 import { t, locale } from '../lib/i18n.js'
 
 const dayLabel = (key, opts = { weekday: 'long', day: 'numeric', month: 'short' }) =>
@@ -56,6 +58,8 @@ export default function Workout({
 
   const [session, setSession] = useState(false)              // the logging screen is open
   const [routineEditing, setRoutineEditing] = useState(null) // null | 'new' | routine being edited
+  const [routineDraft, setRoutineDraft] = useState(null)     // what Splits Suggestions hands a new routine
+  const [splitsOpen, setSplitsOpen] = useState(false)
   const [openId, setOpenId] = useState(null)                 // expanded history entry
   const [deleting, setDeleting] = useState(null)             // history entry awaiting confirmation
 
@@ -179,6 +183,12 @@ export default function Workout({
           </ul>
         )}
         <PrimaryButton onClick={() => setRoutineEditing('new')}>+ {t('Add New Routine')}</PrimaryButton>
+        <button
+          onClick={() => setSplitsOpen(true)}
+          className={`w-full rounded-2xl py-3 font-semibold transition active:scale-[0.98] ${buttonBg} ${accentText}`}
+        >
+          {t('Splits Suggestions')}
+        </button>
       </Card>
 
       {/* ---- Volume of one routine over time ---- */}
@@ -291,9 +301,20 @@ export default function Workout({
             {routineEditing && (
               <RoutineSheet
                 key="routine"
-                routine={routineEditing === 'new' ? null : routineEditing} bodyWeight={bodyWeight}
+                routine={routineEditing === 'new' ? null : routineEditing} draft={routineDraft} bodyWeight={bodyWeight}
                 onSave={onSaveRoutine} onDelete={onDeleteRoutine}
-                onClose={() => setRoutineEditing(null)}
+                onClose={() => { setRoutineEditing(null); setRoutineDraft(null) }}
+              />
+            )}
+            {splitsOpen && (
+              <SplitsSheet
+                key="splits"
+                onNext={(exercises, dayName) => {
+                  setRoutineDraft({ name: dayName ? t(dayName) : '', exercises })
+                  setRoutineEditing('new')
+                  setSplitsOpen(false)
+                }}
+                onClose={() => setSplitsOpen(false)}
               />
             )}
           </AnimatePresence>

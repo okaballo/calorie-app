@@ -343,8 +343,8 @@ export function makeCustomExercise(
 
 // ---- Splits ------------------------------------------------------------------
 // Suggested ways to divide the week, each day with a short list of staple
-// exercises (by name). The "Splits suggestions" screen of the routine editor
-// shows them and adds them to a routine.
+// exercises (by name). The "Splits suggestions" screen of the Workout tab shows
+// them and starts a new routine from the ones picked.
 
 export interface SplitDay { name: string; muscles: Muscle[]; exercises: string[] }
 export interface Split { id: string; name: string; note: string; days: SplitDay[] }

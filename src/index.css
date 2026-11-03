@@ -225,6 +225,24 @@ input, select { font-size: 16px; }
   button:active, a:active { scale: none !important; }
 }
 
+/* Theme reveal (lib/theme.js): the new theme grows over a snapshot of the old
+   one. Colour transitions stay off meanwhile, or old colours would fade inside
+   the circle. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) { animation: theme-reveal 500ms cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes theme-reveal {
+  from { clip-path: circle(0 at var(--reveal-x) var(--reveal-y)); }
+  to { clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y)); }
+}
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after { transition: none !important; }
+
 /* Increase Contrast / Reduce Transparency: glass surfaces become solid and the
    blur layers behind them are dropped. (prefers-reduced-transparency is only
    understood by Chromium; prefers-contrast covers iOS Safari.) */

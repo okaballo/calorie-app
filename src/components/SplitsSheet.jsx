@@ -1,8 +1,9 @@
 // "Splits suggestions": the usual ways to divide training over the week (Push /
 // Pull / Legs, Upper / Lower, ...), each day with a short list of staple
-// exercises. "Add all" puts a whole day into the routine being built (and names
-// the routine after the day if it has no name yet); the + beside an exercise
-// adds just that one. Exercises already in the routine show a tick.
+// exercises. "Add all" picks a whole day; the + beside an exercise picks just
+// that one, and its tick takes it back. Next hands the picks to a new routine,
+// named after the first day added in full.
+import { useState } from 'react'
 import { SPLITS, splitDayExercises } from '../lib/exercisesDB.ts'
 import { Sheet, AddButton, Card, muted, faint, accentText, divider } from './ui.jsx'
 import { t } from '../lib/i18n.js'
@@ -12,9 +13,26 @@ const CheckIcon = () => (
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
 )
 
-export default function SplitsSheet({ added, onAdd, onClose }) {
+export default function SplitsSheet({ onNext, onClose }) {
+  const [picked, setPicked] = useState([]) // exercises, in tap order
+  const [dayName, setDayName] = useState(null)
+
+  const isPicked = (ex) => picked.some((p) => p.id === ex.id)
+  const remove = (ex) => {
+    const left = picked.filter((p) => p.id !== ex.id)
+    setPicked(left)
+    if (left.length === 0) setDayName(null)
+  }
+
   return (
-    <Sheet title={t('Splits Suggestions')} variant="modal" z="z-50" closeLabel="Done" onClose={onClose}>
+    <Sheet
+      title={t('Splits Suggestions')} variant="modal" z="z-50" onClose={onClose} dirty={picked.length > 0}
+      action={(
+        <button onClick={() => onNext(picked, dayName)} disabled={picked.length === 0} className={`font-semibold disabled:opacity-35 ${accentText}`}>
+          {picked.length > 0 ? t('Next ({n})', { n: picked.length }) : t('Next')}
+        </button>
+      )}
+    >
       {SPLITS.map((split) => (
         <Card key={split.id} className="space-y-4">
           <div>
@@ -23,7 +41,7 @@ export default function SplitsSheet({ added, onAdd, onClose }) {
           </div>
           {split.days.map((day) => {
             const list = splitDayExercises(day)
-            const missing = list.filter((ex) => !added.includes(ex.id))
+            const missing = list.filter((ex) => !isPicked(ex))
             return (
               <div key={day.name}>
                 <div className="flex items-center justify-between gap-3">
@@ -32,7 +50,11 @@ export default function SplitsSheet({ added, onAdd, onClose }) {
                     <p className={`truncate text-xs ${faint}`}>{day.muscles.map((m) => t(m)).join(', ')}</p>
                   </div>
                   <button
-                    onClick={() => onAdd(missing, day.name)} disabled={missing.length === 0}
+                    onClick={() => {
+                      setPicked([...picked, ...missing])
+                      setDayName(dayName ?? day.name)
+                    }}
+                    disabled={missing.length === 0}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold bg-royal/10 disabled:opacity-40 dark:bg-royal/25 ${accentText}`}
                   >
                     {t(missing.length === 0 ? 'Added' : 'Add all')}
@@ -45,12 +67,15 @@ export default function SplitsSheet({ added, onAdd, onClose }) {
                         <p className="truncate text-sm font-medium">{ex.name}</p>
                         <p className={`truncate text-xs ${muted}`}><span className={accentText}>{t(ex.muscle)}</span> · {t(ex.equipment)}</p>
                       </div>
-                      {added.includes(ex.id) ? (
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-on-accent" aria-label={t('Added')}>
+                      {isPicked(ex) ? (
+                        <button
+                          onClick={() => remove(ex)} aria-label={t('Remove {name}', { name: ex.name })}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-on-accent transition active:scale-90"
+                        >
                           <CheckIcon />
-                        </span>
+                        </button>
                       ) : (
-                        <AddButton label={t('Add {name}', { name: ex.name })} onClick={() => onAdd([ex], null)} />
+                        <AddButton label={t('Add {name}', { name: ex.name })} onClick={() => setPicked([...picked, ex])} />
                       )}
                     </li>
                   ))}

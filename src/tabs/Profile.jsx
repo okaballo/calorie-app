@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { fmt0 } from '../lib/calc.js'
 import { toAvatarDataUrl } from '../lib/image.js'
 import { applyBackup, exportBackup, parseBackup } from '../lib/backup.js'
+import { revealTheme } from '../lib/theme.js'
 import {
   Card, SectionTitle, PageTitle, TextInput, FieldRow, GlassSwitch, Avatar, ChevronIcon,
   ConfirmDialog, focusRing, divider, muted, faint, accentText,
@@ -99,7 +100,7 @@ function ThemePicker({ theme, onTheme, lang }) {
               key={value}
               type="button"
               aria-pressed={selected}
-              onClick={() => onTheme(value)}
+              onClick={(e) => revealTheme(value, lang === 'ar', e.currentTarget.firstElementChild, () => onTheme(value))}
               className={`flex flex-col gap-2 rounded-[18px] p-1 text-start transition active:scale-[0.97] ${focusRing}`}
             >
               <span className={`block rounded-[16px] p-[3px] ring-2 transition-colors ${selected ? 'ring-royal dark:ring-lilac' : 'ring-transparent hover:ring-zinc-300 dark:hover:ring-white/20'}`}>

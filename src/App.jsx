@@ -28,6 +28,7 @@ import { dayKey, nextTrackingDay, mealDay, parseDay, previousDay } from './lib/c
 import { isRTL, setLanguage, t } from './lib/i18n.js'
 import { EMPTY_WORKOUT, isEmptyWorkout, isLive } from './lib/workouts.js'
 import { setCustomExercises } from './lib/exercisesDB.ts'
+import { applyTheme } from './lib/theme.js'
 import { CustomExercisesContext } from './lib/customExercisesContext.js'
 import Home from './tabs/Home.jsx'
 import Analytics from './components/Analytics.jsx'
@@ -417,19 +418,12 @@ export default function App() {
   const toggleCheatDay = (key) =>
     setCheatDays((list) => (list.includes(key) ? list.filter((d) => d !== key) : [...list, key]))
 
-  // Theme: toggling the `dark` class on <html> switches every `dark:` variant,
-  // the `neu` class every `neu:` one. 'system' follows the device and changes
-  // with it, even while the app is open. Neumorphism is English-only for now:
-  // in Arabic it shows as Light, and Dark Neumorphism as plain Dark.
-  useEffect(() => {
+  // Theme (lib/theme.js). 'system' follows the device and changes with it, even
+  // while the app is open. A layout effect, so a theme picked in Profile is on
+  // the page by the time revealTheme's flushSync returns.
+  useLayoutEffect(() => {
     const query = window.matchMedia('(prefers-color-scheme: dark)')
-    const apply = () => {
-      const neu = (theme === 'neumorphism' || theme === 'neumorphism-dark') && !rtl
-      const dark = theme === 'dark' || theme === 'neumorphism-dark' || (theme === 'system' && query.matches)
-      document.documentElement.classList.toggle('dark', dark)
-      document.documentElement.classList.toggle('neu', neu)
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? (neu ? '#25282f' : '#000000') : neu ? '#e4e8ee' : '#f7f7f8')
-    }
+    const apply = () => applyTheme(theme, rtl)
     apply()
     if (theme !== 'system') return undefined
     query.addEventListener('change', apply)

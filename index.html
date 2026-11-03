@@ -38,10 +38,66 @@
         if (dark) document.documentElement.classList.add("dark")
         if ((theme === "neumorphism" || theme === "neumorphism-dark") && lang !== "ar") document.documentElement.classList.add("neu")
       } catch (e) { document.documentElement.classList.add("dark") }
+
+      // The animated intro plays on every launch, unless Reduce Motion is on.
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("intro")
     </script>
+
+    <!-- Launch screen: styled here so it paints before the app's JS and CSS
+         arrive. Backgrounds match each theme's page. main.jsx removes it.
+         The intro (.intro) builds the logo: the tile, then the chevrons rising
+         bottom to top, then the spark. With Reduce Motion it just fades in. Each
+         piece is its own <svg> so the browser can animate it on the compositor,
+         smooth even while the app's JS loads. -->
+    <style>
+      #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #f7f7f8; pointer-events: none; }
+      .dark #splash { background: #000; }
+      .neu #splash { background: #e4e8ee; }
+      .neu.dark #splash { background: #25282f; }
+      .splash-logo { position: relative; width: 96px; height: 96px; animation: splash-fade 200ms ease-out both; }
+      .splash-logo svg { position: absolute; inset: 0; }
+      .splash-logo polyline { fill: none; stroke-width: 46; stroke-linecap: round; stroke-linejoin: round; }
+      .intro .splash-logo { animation: splash-tile 900ms ease-out both; }
+      .intro .splash-rise { animation: splash-rise 850ms cubic-bezier(.25, .1, .25, 1) both; }
+      .intro .splash-spark { transform-origin: 50% 14.5%; animation: splash-spark 450ms cubic-bezier(.3, 1.6, .5, 1) 1550ms both; }
+      @keyframes splash-fade { from { opacity: 0; } }
+      @keyframes splash-tile { from { opacity: 0; transform: scale(.92); } }
+      @keyframes splash-rise { from { opacity: 0; transform: translateY(16px); } }
+      @keyframes splash-spark { from { opacity: 0; transform: scale(0); } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="splash" aria-hidden="true">
+      <!-- public/icons/icon.svg, inline so it needs no request -->
+      <div class="splash-logo">
+        <svg viewBox="0 0 512 512">
+          <defs>
+            <linearGradient id="splash-bg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#1A0E33" />
+              <stop offset="1" stop-color="#050407" />
+            </linearGradient>
+            <filter id="splash-glow" x="-40%" y="-80%" width="180%" height="260%">
+              <feGaussianBlur stdDeviation="14" />
+            </filter>
+          </defs>
+          <rect width="512" height="512" rx="114" fill="url(#splash-bg)" />
+        </svg>
+        <svg class="splash-rise" style="animation-delay: 350ms" viewBox="0 0 512 512">
+          <polyline points="150,410 256,316 362,410" stroke="#4B2A8A" />
+        </svg>
+        <svg class="splash-rise" style="animation-delay: 500ms" viewBox="0 0 512 512">
+          <polyline points="150,316 256,222 362,316" stroke="#7851A9" />
+        </svg>
+        <svg class="splash-rise" style="animation-delay: 650ms" viewBox="0 0 512 512">
+          <polyline points="150,222 256,128 362,222" stroke="#B58CFF" filter="url(#splash-glow)" style="stroke-width: 52" />
+          <polyline points="150,222 256,128 362,222" stroke="#EDE2FF" />
+        </svg>
+        <svg class="splash-spark" viewBox="0 0 512 512">
+          <circle cx="256" cy="74" r="10" fill="#EDE2FF" />
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

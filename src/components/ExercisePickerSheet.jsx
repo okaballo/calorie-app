@@ -6,7 +6,8 @@
 //              muscle with the closest alternatives first; one tap swaps.
 //
 // "Create custom exercise" adds the user's own exercise (CustomExerciseSheet),
-// kept in mt.customExercises and shown here like the built-in ones.
+// kept in mt.customExercises. They get their own "My Exercises" list above the
+// built-in ones, and the search and filters apply to both.
 //
 // "My equipment" is remembered (mt.gymEquipment), so someone whose gym has no
 // Smith machine or cables only ever sees exercises they can actually do.
@@ -56,6 +57,8 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
     if (swap && !query.trim() && muscle === replacing.muscle) return findAlternatives(replacing.id, equipment)
     return filterExercises({ query, muscle, equipment }).filter((e) => e.id !== replacing?.id)
   }, [swap, replacing, query, muscle, equipment, custom])
+  const mine = results.filter((e) => e.custom)
+  const others = results.filter((e) => !e.custom)
 
   const isSelected = (ex) => selected.some((s) => s.id === ex.id)
   const toggle = (ex) => setSelected((list) => (isSelected(ex) ? list.filter((s) => s.id !== ex.id) : [...list, ex]))
@@ -70,6 +73,49 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
     onPick(selected)
     onClose()
   }
+
+  const row = (ex) => {
+    const on = isSelected(ex)
+    return (
+      <li key={ex.id} className="flex items-center gap-3 py-2.5">
+        <button onClick={() => tap(ex)} className="min-w-0 flex-1 text-start">
+          <p className="truncate text-sm font-medium">{ex.name}</p>
+          <p className={`truncate text-xs ${muted}`}>
+            <span className={accentText}>{t(ex.muscle)}</span> · {t(ex.equipment)}
+            {ex.secondary.length > 0 && <span className={faint}> · {ex.secondary.map((m) => t(m)).join(', ')}</span>}
+          </p>
+        </button>
+        {ex.custom && isCustomId(ex.id) && (
+          <button
+            onClick={() => setDeleting(ex)} aria-label={t('Delete {name}', { name: ex.name })}
+            className={`shrink-0 px-1 text-lg leading-none ${faint}`}
+          >
+            ×
+          </button>
+        )}
+        {swap ? (
+          <button
+            onClick={() => tap(ex)}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold ${accentText} bg-royal/10 dark:bg-royal/25`}
+          >
+            {t('Swap')}
+          </button>
+        ) : on ? (
+          <button
+            onClick={() => toggle(ex)}
+            aria-label={t('Remove {name}', { name: ex.name })}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-on-accent transition active:scale-90"
+          >
+            <CheckIcon />
+          </button>
+        ) : (
+          <AddButton label={t('Add {name}', { name: ex.name })} onClick={() => toggle(ex)} />
+        )}
+      </li>
+    )
+  }
+
+  const listTitle = `text-xs font-semibold uppercase tracking-wide ${faint}`
 
   return (
     <Sheet
@@ -118,58 +164,26 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
         </p>
       </div>
 
-      {!swap && (
-        <button onClick={() => setCreating(true)} className={`text-sm font-semibold ${accentText}`}>
-          + {t('Create custom exercise')}
-        </button>
+      {(!swap || mine.length > 0) && (
+        <section className="space-y-1">
+          <h3 className={listTitle}>{t('My Exercises')}</h3>
+          {mine.length > 0 && <ul className={`divide-y ${divider}`}>{mine.map(row)}</ul>}
+          {custom.length === 0 && <p className={`py-1 text-sm ${muted}`}>{t('Exercises you create show up here.')}</p>}
+          {!swap && (
+            <button onClick={() => setCreating(true)} className={`py-1 text-sm font-semibold ${accentText}`}>
+              + {t('Create custom exercise')}
+            </button>
+          )}
+        </section>
       )}
 
-      <ul className={`divide-y ${divider}`}>
-        {results.map((ex) => {
-          const on = isSelected(ex)
-          return (
-            <li key={ex.id} className="flex items-center gap-3 py-2.5">
-              <button onClick={() => tap(ex)} className="min-w-0 flex-1 text-start">
-                <p className="truncate text-sm font-medium">
-                  {ex.name}
-                  {ex.custom && <span className={`ms-2 rounded-full px-1.5 py-0.5 align-middle text-[10px] font-semibold bg-royal/10 dark:bg-royal/25 ${accentText}`}>{t('Custom')}</span>}
-                </p>
-                <p className={`truncate text-xs ${muted}`}>
-                  <span className={accentText}>{t(ex.muscle)}</span> · {t(ex.equipment)}
-                  {ex.secondary.length > 0 && <span className={faint}> · {ex.secondary.map((m) => t(m)).join(', ')}</span>}
-                </p>
-              </button>
-              {ex.custom && isCustomId(ex.id) && (
-                <button
-                  onClick={() => setDeleting(ex)} aria-label={t('Delete {name}', { name: ex.name })}
-                  className={`shrink-0 px-1 text-lg leading-none ${faint}`}
-                >
-                  ×
-                </button>
-              )}
-              {swap ? (
-                <button
-                  onClick={() => tap(ex)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold ${accentText} bg-royal/10 dark:bg-royal/25`}
-                >
-                  {t('Swap')}
-                </button>
-              ) : on ? (
-                <button
-                  onClick={() => toggle(ex)}
-                  aria-label={t('Remove {name}', { name: ex.name })}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-royal text-on-accent transition active:scale-90"
-                >
-                  <CheckIcon />
-                </button>
-              ) : (
-                <AddButton label={t('Add {name}', { name: ex.name })} onClick={() => toggle(ex)} />
-              )}
-            </li>
-          )
-        })}
-        {results.length === 0 && <p className={`py-3 text-sm ${muted}`}>{t('No exercises match your filters.')}</p>}
-      </ul>
+      {others.length > 0 && (
+        <section className="space-y-1">
+          <h3 className={listTitle}>{t('All Exercises')}</h3>
+          <ul className={`divide-y ${divider}`}>{others.map(row)}</ul>
+        </section>
+      )}
+      {results.length === 0 && <p className={`py-3 text-sm ${muted}`}>{t('No exercises match your filters.')}</p>}
 
       <PickerPortal>
         {creating && (
@@ -181,6 +195,7 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
               setCustomExercises([...custom, ex])
               if (!swap) setSelected((list) => [...list, ex])
               setQuery('')
+              setMuscle(null) // a muscle filter could hide the new exercise from My Exercises
             }}
             onClose={() => setCreating(false)}
           />
