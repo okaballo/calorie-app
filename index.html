@@ -39,16 +39,14 @@
         if ((theme === "neumorphism" || theme === "neumorphism-dark") && lang !== "ar") document.documentElement.classList.add("neu")
       } catch (e) { document.documentElement.classList.add("dark") }
 
-      // The animated intro plays until it has been seen once (main.jsx saves that).
-      try {
-        if (!localStorage.getItem("kibase.introSeen") &&!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("intro")
-      } catch (e) {}
+      // The animated intro plays on every launch, unless Reduce Motion is on.
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("intro")
     </script>
 
     <!-- Launch screen: styled here so it paints before the app's JS and CSS
          arrive. Backgrounds match each theme's page. main.jsx removes it.
-         Usually the logo just fades in. The first launch (.intro) builds it:
-         the tile, then the chevrons rising bottom to top, then the spark. Each
+         The intro (.intro) builds the logo: the tile, then the chevrons rising
+         bottom to top, then the spark. With Reduce Motion it just fades in. Each
          piece is its own <svg> so the browser can animate it on the compositor,
          smooth even while the app's JS loads. -->
     <style>
@@ -67,7 +65,7 @@
       @keyframes splash-rise { from { opacity: 0; transform: translateY(16px); } }
       @keyframes splash-spark { from { opacity: 0; transform: scale(0); } }
     </style>
-    <script type="module" crossorigin src="/calorie-app/assets/index-BOXHVpy1.js"></script>
+    <script type="module" crossorigin src="/calorie-app/assets/index-F9yx1KIk.js"></script>
     <link rel="stylesheet" crossorigin href="/calorie-app/assets/index-yZMOBVZZ.css">
   </head>
   <body>
