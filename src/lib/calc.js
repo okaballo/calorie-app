@@ -110,7 +110,7 @@ export const tdee = (profile) => {
 // ---- Weekly analytics ----------------------------------------------------
 
 /** First day of the week for the device's region (0 = Sunday), Monday if unknown. */
-const firstWeekday = () => {
+export const firstWeekday = () => {
   try {
     const locale = new Intl.Locale(navigator.language)
     const info = locale.getWeekInfo?.() ?? locale.weekInfo

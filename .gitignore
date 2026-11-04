@@ -8,4 +8,4 @@ dist
 !.env.example
 
 
-memory.md
+claude-memory/

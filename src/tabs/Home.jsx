@@ -2,6 +2,7 @@
 // three macro rings, the meals of the ACTIVE tracking day, then the
 // analytics section (passed in as `analytics`, see components/Analytics.jsx).
 // The day only changes when the user confirms Start New Day.
+import { createPortal } from 'react-dom'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, dayKey, currentWeek, dayTotals, dateFormat, num, fmt0 } from '../lib/calc.js'
@@ -10,6 +11,7 @@ import {
   ConfirmDialog, NameDialog, focusRing, hitSlopY, muted, faint, accentText, divider, project, useRowMotion,
 } from '../components/ui.jsx'
 import { t, locale, isRTL } from '../lib/i18n.js'
+import { StreakChip, CalorieStreakSheet, StreakIcon } from '../components/Streaks.jsx'
 
 /**
  * The week of the viewed day, as a compact strip. Swipe it sideways to change
@@ -20,7 +22,7 @@ import { t, locale, isRTL } from '../lib/i18n.js'
 // Week strip motion: soft on purpose, gentler than the app's sheet SPRING.
 const SOFT = { type: 'spring', stiffness: 260, damping: 32, restDelta: 0.5, restSpeed: 10 }
 
-function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
+function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, onViewDay }) {
   const ref = useRef(null)
   const drag = useRef(null)     // { x, y, id, horizontal, base, dx0, hist } while a finger is down
   const anim = useRef(null)     // the spring currently moving the track
@@ -161,6 +163,10 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
                   strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
               )}
             </span>
+            {/* A small streak icon marks a day that stayed inside the calorie range (the height is kept on every day). */}
+            <span className="flex h-3 items-center text-streak" aria-hidden="true">
+              {hitDays?.has(key) && <StreakIcon className="size-3" />}
+            </span>
           </button>
         )
       })}
@@ -189,13 +195,14 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, onViewDay }) {
 }
 
 export default function Home({
-  profile, avatar, meals, activeDay, viewDay, onViewDay, cheatDays = [],
-  onAddMeal, onEditMeal, onDeleteMeal, onStartNewDay, onSaveTemplate, onOpenProfile, analytics,
+  profile, avatar, meals, activeDay, viewDay, onViewDay, cheatDays = [], streak,
+  onAddMeal, onEditMeal, onDeleteMeal, onStartNewDay, onSaveTemplate, onOpenProfile, analytics, statsEntered, onOpenPlan,
 }) {
   const rowMotion = useRowMotion()
   const [confirming, setConfirming] = useState(false)
   const [savingMeal, setSavingMeal] = useState(null) // meal being saved as a template
   const [savedId, setSavedId] = useState(null)       // briefly highlights the save icon
+  const [streakOpen, setStreakOpen] = useState(false)
 
   // Only the viewed day's meals count and are listed (the active day unless
   // another date is picked), so the dashboard AND the meal list always match it.
@@ -224,12 +231,33 @@ export default function Home({
         <h1 dir="ltr" className="text-[30px] font-extrabold leading-none tracking-tight">
           <span className="bg-linear-to-br from-lilac to-royal bg-clip-text text-transparent">Ki</span>Base
         </h1>
-        <button type="button" onClick={onOpenProfile} aria-label={t('Open profile')} className={`rounded-full transition active:scale-95 ${focusRing}`}>
-          <Avatar src={avatar} name={profile.name} size={40} />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <StreakChip
+            value={streak.current} lit={streak.today === 'ok' || streak.today === 'cheat'}
+            label={`${t('Calorie streak')}: ${streak.current}`} onClick={() => setStreakOpen(true)}
+          />
+          <button type="button" onClick={onOpenProfile} aria-label={t('Open profile')} className={`rounded-full transition active:scale-95 ${focusRing}`}>
+            <Avatar src={avatar} name={profile.name} size={40} />
+          </button>
+        </div>
       </header>
+      {createPortal(
+        <div data-no-swipe>
+          <AnimatePresence>
+            {streakOpen && (
+              <CalorieStreakSheet
+                streak={streak} calories={streak.todayKcal} hint={!statsEntered}
+                onOpenPlan={() => { setStreakOpen(false); onOpenPlan() }}
+                dayLetter={(key) => dateFormat(locale(), { weekday: 'narrow' }).format(parseDay(key))}
+                onClose={() => setStreakOpen(false)}
+              />
+            )}
+          </AnimatePresence>
+        </div>,
+        document.body,
+      )}
 
-      <WeekStrip viewDay={viewDay} activeDate={activeDay.date} meals={meals} cheatDays={cheatDays} onViewDay={onViewDay} />
+      <WeekStrip viewDay={viewDay} activeDate={activeDay.date} meals={meals} cheatDays={cheatDays} hitDays={streak.hitDays} onViewDay={onViewDay} />
 
       {/* ---- Calories (viewed day shown inside the card) ---- */}
       <Card>

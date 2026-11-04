@@ -31,6 +31,7 @@ import WorkoutSessionSheet from '../components/WorkoutSessionSheet.jsx'
 import RoutineSheet from '../components/RoutineSheet.jsx'
 import SplitsSheet from '../components/SplitsSheet.jsx'
 import { t, locale } from '../lib/i18n.js'
+import { StreakChip, WorkoutStreakSheet } from '../components/Streaks.jsx'
 
 const dayLabel = (key, opts = { weekday: 'long', day: 'numeric', month: 'short' }) =>
   parseDay(key).toLocaleDateString(locale(), opts)
@@ -48,7 +49,7 @@ function Elapsed({ startedAt, className = '' }) {
 
 export default function Workout({
   day, activeDate, workouts, history, onUpdate, onFinish, onDeleteWorkout,
-  routines, bodyWeight, onSaveRoutine, onDeleteRoutine, onBackToToday,
+  routines, bodyWeight, onSaveRoutine, onDeleteRoutine, onBackToToday, streak, onStreakTarget,
 }) {
   // Only the workout in progress lives in `workouts`; finished ones are in `history`.
   const workout = workouts[day] ?? EMPTY_WORKOUT
@@ -60,6 +61,7 @@ export default function Workout({
   const [routineEditing, setRoutineEditing] = useState(null) // null | 'new' | routine being edited
   const [routineDraft, setRoutineDraft] = useState(null)     // what Splits Suggestions hands a new routine
   const [splitsOpen, setSplitsOpen] = useState(false)
+  const [streakOpen, setStreakOpen] = useState(false)
   const [openId, setOpenId] = useState(null)                 // expanded history entry
   const [deleting, setDeleting] = useState(null)             // history entry awaiting confirmation
 
@@ -89,7 +91,26 @@ export default function Workout({
 
   return (
     <>
-      <PageTitle>{t('Workout')}</PageTitle>
+      <PageTitle action={
+        <StreakChip
+          value={streak.current} lit={streak.thisWeek >= streak.target}
+          extra={`${streak.thisWeek}/${streak.target}`}
+          label={`${t('Workout streak')}: ${streak.current}`} onClick={() => setStreakOpen(true)}
+        />
+      }>{t('Workout')}</PageTitle>
+      {createPortal(
+        <div data-no-swipe>
+          <AnimatePresence>
+            {streakOpen && (
+              <WorkoutStreakSheet
+                streak={streak} onTarget={onStreakTarget} onClose={() => setStreakOpen(false)}
+                weekLabel={(start) => dayLabel(start, { day: 'numeric', month: 'short' })}
+              />
+            )}
+          </AnimatePresence>
+        </div>,
+        document.body,
+      )}
 
       {/* ---- The workout in progress: blank until a routine is started ---- */}
       <Card className="space-y-3.5">

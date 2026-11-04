@@ -15,7 +15,7 @@
 //   mt.workoutTemplates  saved workout routines (key kept from before the rename)
 //   mt.gymEquipment      equipment filter of the exercise picker
 //   mt.customExercises   the user's own exercises (lib/exercisesDB.ts)
-import { memo, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion,
   useTransform, useVelocity,
@@ -24,11 +24,13 @@ import { useDrag } from '@use-gesture/react'
 import { SPRING, glassRim, GlassBackdrop } from './components/ui.jsx'
 import { LiquidButton } from '@/components/ui/liquid-glass-button'
 import { useLocalStorage } from './lib/useLocalStorage.js'
-import { dayKey, nextTrackingDay, mealDay, parseDay, previousDay } from './lib/calc.js'
+import { dayKey, nextTrackingDay, mealDay, parseDay, previousDay, num, tdee } from './lib/calc.js'
 import { isRTL, setLanguage, t } from './lib/i18n.js'
 import { EMPTY_WORKOUT, isEmptyWorkout, isLive } from './lib/workouts.js'
 import { setCustomExercises } from './lib/exercisesDB.ts'
 import { applyTheme } from './lib/theme.js'
+import { calorieStreak, workoutStreak, goalTypeFor, milestoneFor, DAY_MILESTONES, WEEK_MILESTONES } from './lib/streaks.js'
+import { StreakToast } from './components/Streaks.jsx'
 import { CustomExercisesContext } from './lib/customExercisesContext.js'
 import Home from './tabs/Home.jsx'
 import Analytics from './components/Analytics.jsx'
@@ -45,6 +47,7 @@ const DEFAULT_PROFILE = {
   name: '', sex: 'Male', age: 25, heightCm: 175, weightKg: 70,
   activity: 'Lightly active', goal: 'Maintain',
   calorieGoal: 2100, proteinGoal: 140, carbsGoal: 250, fatGoal: 60,
+  weeklyWorkoutGoal: 3,  // workout days per week, for the workout streak
 }
 
 // Tab icons: one outlined shape each. The active tab only changes colour; the
@@ -397,6 +400,44 @@ export default function App() {
     setActiveDay((current) => ({ date: nextTrackingDay(current.date), startedAt: new Date().toISOString() }))
   }
 
+  // Streaks (lib/streaks.js) are worked out from the meals and finished workouts, never stored.
+  // The calorie range depends on whether the goal is a cut, maintenance or bulk. With real body stats that is
+  // read from the goal itself (against maintenance), so a goal typed by hand works as well as a calculated one.
+  // Stats count as entered when any differs from the defaults, or there is a weigh-in; until then the
+  // Cut / Maintain / Bulk selector is used, rather than guessing from made-up numbers.
+  const statsEntered = weights.length > 0 || ['sex', 'age', 'heightCm', 'weightKg', 'activity'].some((k) => profile[k] !== DEFAULT_PROFILE[k])
+  const maintenance = tdee(planProfile).maintenance
+  const calGoal = num(profile.calorieGoal)
+  const calGoalType = statsEntered ? goalTypeFor(calGoal, maintenance) : profile.goal
+  const calStreak = useMemo(
+    () => calorieStreak(meals, activeDay.date, cheatDays, calGoal, calGoalType),
+    [meals, activeDay.date, cheatDays, calGoal, calGoalType],
+  )
+  const wkStreak = useMemo(
+    () => workoutStreak(workoutHistory, activeDay.date, profile.weeklyWorkoutGoal),
+    [workoutHistory, activeDay.date, profile.weeklyWorkoutGoal],
+  )
+
+  // A toast the first time a streak reaches a milestone. The last milestone shown is kept per streak
+  // (this device only); the first run just records it, so an existing streak does not celebrate on update.
+  // A broken streak lowers the record, so reaching the milestone again celebrates again.
+  // Calories count closed days; a workout week counts the moment its target is reached.
+  const [streakToast, setStreakToast] = useState(null)
+  const hideStreakToast = useCallback(() => setStreakToast(null), [])
+  const calMilestone = milestoneFor(calStreak.confirmed, DAY_MILESTONES)
+  const wkMilestone = milestoneFor(wkStreak.current, WEEK_MILESTONES)
+  useEffect(() => {
+    let seen = {}
+    try { seen = JSON.parse(localStorage.getItem('kibase.streakSeen')) || {} } catch { /* unreadable: start over */ }
+    const fresh = []
+    if (seen.cal !== undefined && calMilestone > seen.cal) fresh.push(t('{n}-day calorie streak!', { n: calMilestone }))
+    if (seen.wk !== undefined && wkMilestone > seen.wk) fresh.push(t('{n}-week workout streak!', { n: wkMilestone }))
+    if (seen.cal !== calMilestone || seen.wk !== wkMilestone) {
+      try { localStorage.setItem('kibase.streakSeen', JSON.stringify({ cal: calMilestone, wk: wkMilestone })) } catch { /* storage blocked */ }
+    }
+    if (fresh.length) setStreakToast({ id: Date.now(), text: fresh[0] })
+  }, [calMilestone, wkMilestone])
+
   // The day Home is showing: null = the active day. Picking another date lets
   // you review, add, edit and remove meals on it; everything is stored by
   // tracking-day key, so Analytics recomputes from `meals` like any other edit.
@@ -630,6 +671,7 @@ export default function App() {
       <Home
         profile={profile} avatar={avatar} meals={meals} activeDay={activeDay}
         viewDay={shownDay} onViewDay={(key) => setViewDay(key === activeDay.date ? null : key)} cheatDays={cheatDays}
+        streak={calStreak} statsEntered={statsEntered} onOpenPlan={() => setPlanOpen(true)}
         onAddMeal={() => setMealOpen(true)}
         onEditMeal={(meal) => setMealEditing(meal)}
         onStartNewDay={startNewDay}
@@ -642,7 +684,7 @@ export default function App() {
         }
       />
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [profile, avatar, meals, activeDay, shownDay, cheatDays, planProfile, lang])
+  ), [profile, avatar, meals, activeDay, shownDay, cheatDays, planProfile, calStreak, statsEntered, lang])
 
   // Logs to the same day Home is showing, so a forgotten workout can be
   // added by picking its date on Home first.
@@ -660,10 +702,11 @@ export default function App() {
         ))}
         onDeleteRoutine={(id) => setWorkoutTemplates((list) => list.filter((x) => x.id !== id))}
         onBackToToday={() => setViewDay(null)}
+        streak={wkStreak} onStreakTarget={(n) => updateProfile({ weeklyWorkoutGoal: n })}
       />
       </CustomExercisesContext.Provider>
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [shownDay, activeDay, dailyWorkouts, workoutHistory, workoutTemplates, customExercises, planProfile.weightKg, lang])
+  ), [shownDay, activeDay, dailyWorkouts, workoutHistory, workoutTemplates, customExercises, planProfile.weightKg, wkStreak, lang])
 
   const weightPage = useMemo(() => (
       <Weight
@@ -727,6 +770,8 @@ export default function App() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[calc(env(safe-area-inset-bottom)+112px)] bg-linear-to-t from-canvas/85 via-canvas/45 to-transparent dark:from-black/85 dark:via-black/45 neu:from-canvas/85 neu:via-canvas/45"
       />
+
+      <StreakToast toast={streakToast} onDone={hideStreakToast} />
 
       <TabBar navIndex={navIndex} onTab={goTo} onAdd={() => setMealOpen(true)} lang={lang} />
 

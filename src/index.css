@@ -27,6 +27,8 @@
   --color-fat-deep: #c2409f;    /* fats text on light backgrounds */
   --color-subtle: #6b6b75;      /* faint text on light: 5.3:1 on white, 4.8:1 on the field */
   --color-danger: #d70015;      /* destructive buttons, white text 5.4:1 */
+  --color-streak: #7851a9;      /* streak icon and dots: Royal Purple, lilac in dark (see :root.dark below) */
+  --color-on-streak: #ffffff;
   --color-on-accent: #ffffff;   /* text on a Royal Purple fill (dark ink in dark Neumorphism) */
 
   /* San Francisco. SF Pro and SF Arabic are Apple system fonts (their licence
@@ -267,3 +269,6 @@ input, select { font-size: 16px; }
   text-shadow: 0 0 8px color-mix(in srgb, currentColor 55%, transparent);
 }
 
+
+/* Streak accent follows the theme: lilac and dark ink on dark backgrounds. */
+:root.dark { --color-streak: #b58ff2; --color-on-streak: #18181b; }
