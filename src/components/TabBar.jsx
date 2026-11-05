@@ -23,7 +23,7 @@ const TABS = TAB_ORDER.length
 
 // Tab bar springs. The lens is slightly under-damped so it lands with a
 // small jelly settle, like iOS 26; FOLLOW keeps it glued to a dragging finger.
-const LENS_SPRING = { type: 'spring', stiffness: 380, damping: 30, mass: 1 }
+const LENS_SPRING = { type: 'spring', stiffness: 380, damping: 30, mass: 2 }
 const FOLLOW_SPRING = { type: 'spring', stiffness: 900, damping: 60 }
 const PRESS_SPRING = { type: 'spring', stiffness: 500, damping: 30 }
 
@@ -83,7 +83,7 @@ export default memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
   const slotX = (i) => (rtl ? TABS - 1 - i : i) * tabW
   const moveLens = (target, spring = LENS_SPRING) => (reduce ? lensX.set(target) : animate(lensX, target, spring))
   // Lets go of the stretch with a little elastic wobble.
-  const relax = () => (reduce ? edge.set(0) : animate(edge, 0, { type: 'spring', stiffness: 420, damping: 18 }))
+  const relax = () => (reduce ? edge.set(0) : animate(edge, 0, { type: 'spring', stiffness: 820, damping: 18 }))
   const lift = (to, delay = 0) => (reduce ? press.set(to) : animate(press, to, { ...PRESS_SPRING, delay }))
 
   // Follow the active tab (taps, page swipes, far jumps), except mid-drag.
