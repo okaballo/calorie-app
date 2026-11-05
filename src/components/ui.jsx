@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  animate, motion, useDragControls, useMotionValue, useReducedMotion, useTransform, useVelocity,
+  AnimatePresence, animate, motion, useDragControls, useMotionValue, useReducedMotion, useTransform, useVelocity,
 } from 'framer-motion'
 import { fmt0, fmt1 } from '../lib/calc.js'
 import { t, isRTL } from '../lib/i18n.js'
@@ -389,6 +389,11 @@ export const ChevronIcon = ({ className = 'h-4 w-4' }) => (
   </svg>
 )
 
+export const CheckIcon = ({ className = 'h-4 w-4', strokeWidth = 3 }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth}
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+)
+
 export const PencilIcon = ({ className = 'h-[18px] w-[18px]' }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor"
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -732,6 +737,17 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
     </div>
   )
 }
+
+/**
+ * Where to render sheets opened from inside a sliding, transformed panel: into
+ * <body>, because a fixed sheet inside a transform is positioned against that
+ * panel. data-no-swipe keeps drags in the sheet from switching tabs. Children
+ * are keyed sheets or nothing.
+ */
+export const SheetPortal = ({ children }) => createPortal(
+  <div data-no-swipe><AnimatePresence>{children}</AnimatePresence></div>,
+  document.body,
+)
 
 // Rendered into <body> with a portal: the tab pages sit on a transformed
 // (sliding) track, and `position: fixed` inside a transform is positioned

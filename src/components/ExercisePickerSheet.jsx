@@ -12,30 +12,12 @@
 // "My equipment" is remembered (mt.gymEquipment), so someone whose gym has no
 // Smith machine or cables only ever sees exercises they can actually do.
 import { useContext, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { AnimatePresence } from 'framer-motion'
-import { MUSCLES, EQUIPMENT, filterExercises, findAlternatives, isCustomId, setCustomExercises } from '../lib/exercisesDB.ts'
+import { MUSCLES, EQUIPMENT, filterExercises, findAlternatives, isCustomId } from '../lib/exercisesDB.ts'
 import { CustomExercisesContext } from '../lib/customExercisesContext.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
-import { Sheet, SearchInput, AddButton, Chip, ChipRow, ConfirmDialog, muted, faint, accentText, divider } from './ui.jsx'
+import { Sheet, SheetPortal, SearchInput, AddButton, CheckIcon, Chip, ChipRow, ConfirmDialog, muted, faint, accentText, divider } from './ui.jsx'
 import CustomExerciseSheet from './CustomExerciseSheet.jsx'
 import { t } from '../lib/i18n.js'
-
-const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3"
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-)
-
-/**
- * Where to render the picker: into <body>, because the screens that open it
- * are themselves sliding, transformed panels (a fixed sheet inside a transform
- * is positioned against that panel). data-no-swipe keeps drags in the picker
- * from switching tabs. Children are <ExercisePickerSheet key=...> or nothing.
- */
-export const PickerPortal = ({ children }) => createPortal(
-  <div data-no-swipe><AnimatePresence>{children}</AnimatePresence></div>,
-  document.body,
-)
 
 export default function ExercisePickerSheet({ replacing = null, partnerOf = null, onPick, onClose }) {
   const swap = Boolean(replacing)
@@ -46,8 +28,6 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(null) // custom exercise awaiting confirmation
   const { list: custom, setList: setCustom } = useContext(CustomExercisesContext)
-  setCustomExercises(custom) // the lookups below read the registry; keep it in step with this render
-
 
   const toggleEquipment = (eq) =>
     setEquipment((list) => (list.includes(eq) ? list.filter((x) => x !== eq) : [...list, eq]))
@@ -185,14 +165,13 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
       )}
       {results.length === 0 && <p className={`py-3 text-sm ${muted}`}>{t('No exercises match your filters.')}</p>}
 
-      <PickerPortal>
+      <SheetPortal>
         {creating && (
           <CustomExerciseSheet
             key="custom-exercise"
             existingNames={custom.map((c) => c.name)}
             onSave={(ex) => {
               setCustom((list) => [...list, ex])
-              setCustomExercises([...custom, ex])
               if (!swap) setSelected((list) => [...list, ex])
               setQuery('')
               setMuscle(null) // a muscle filter could hide the new exercise from My Exercises
@@ -200,7 +179,7 @@ export default function ExercisePickerSheet({ replacing = null, partnerOf = null
             onClose={() => setCreating(false)}
           />
         )}
-      </PickerPortal>
+      </SheetPortal>
 
       {deleting && (
         <ConfirmDialog

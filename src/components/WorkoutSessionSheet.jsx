@@ -16,14 +16,34 @@ import {
 } from '../lib/workouts.js'
 import { useEntryOps } from '../lib/useEntryOps.js'
 import {
-  Card, PrimaryButton, Sheet, TextInput, ConfirmDialog, NameDialog, muted, accentText,
+  Card, PrimaryButton, Sheet, SheetPortal, TextInput, ConfirmDialog, NameDialog, muted, accentText,
 } from './ui.jsx'
 import ExerciseCard from './ExerciseCard.jsx'
-import ExercisePickerSheet, { PickerPortal } from './ExercisePickerSheet.jsx'
+import ExercisePickerSheet from './ExercisePickerSheet.jsx'
 import { t } from '../lib/i18n.js'
 
 // What Save compares: the exercises in order, with their supersets and drop sets.
 const shape = (list) => tidyGroups(list).map((e) => `${e.exerciseId}|${e.group ? 1 : 0}|${e.dropSet ? 1 : 0}`).join()
+
+/** Exercises, sets done and volume of a workout (from workoutStats). */
+export const WorkoutStatsRow = ({ stats }) => (
+  <div className="grid grid-cols-3 divide-x divide-black/6 text-center dark:divide-white/8">
+    <div>
+      <p className="text-xl font-semibold tabular-nums">{stats.exercises}</p>
+      <p className={`text-xs ${muted}`}>{t('Exercises')}</p>
+    </div>
+    <div>
+      <p className="text-xl font-semibold tabular-nums">
+        {stats.done}<span className={`text-sm font-normal ${muted}`}>/{stats.sets}</span>
+      </p>
+      <p className={`text-xs ${muted}`}>{t('Sets done')}</p>
+    </div>
+    <div>
+      <p className={`text-xl font-semibold tabular-nums ${stats.volume > 0 ? accentText : ''}`}>{fmt0(stats.volume)}</p>
+      <p className={`text-xs ${muted}`}>{t('Volume (kg)')}</p>
+    </div>
+  </div>
+)
 
 export default function WorkoutSessionSheet({
   dayLabel, workout, history, day, routines, bodyWeight = 0, onUpdate, onFinish, onSaveRoutine, onClose,
@@ -109,22 +129,7 @@ export default function WorkoutSessionSheet({
           onChange={(e) => update((w) => ({ ...w, name: e.target.value }))}
           placeholder={t('Workout name (optional)')} aria-label={t('Workout name (optional)')}
         />
-        <div className="grid grid-cols-3 divide-x divide-black/6 text-center dark:divide-white/8">
-          <div>
-            <p className="text-xl font-semibold tabular-nums">{stats.exercises}</p>
-            <p className={`text-xs ${muted}`}>{t('Exercises')}</p>
-          </div>
-          <div>
-            <p className="text-xl font-semibold tabular-nums">
-              {stats.done}<span className={`text-sm font-normal ${muted}`}>/{stats.sets}</span>
-            </p>
-            <p className={`text-xs ${muted}`}>{t('Sets done')}</p>
-          </div>
-          <div>
-            <p className={`text-xl font-semibold tabular-nums ${stats.volume > 0 ? accentText : ''}`}>{fmt0(stats.volume)}</p>
-            <p className={`text-xs ${muted}`}>{t('Volume (kg)')}</p>
-          </div>
-        </div>
+        <WorkoutStatsRow stats={stats} />
       </Card>
 
       <div className="space-y-4">
@@ -153,7 +158,7 @@ export default function WorkoutSessionSheet({
         </>
       )}
 
-      <PickerPortal>
+      <SheetPortal>
         {picker && (
           <ExercisePickerSheet
             key="exercise-picker"
@@ -167,7 +172,7 @@ export default function WorkoutSessionSheet({
             onClose={() => setPicker(null)}
           />
         )}
-      </PickerPortal>
+      </SheetPortal>
 
       {naming && (
         <NameDialog

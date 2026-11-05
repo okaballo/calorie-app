@@ -1,9 +1,7 @@
 // Privacy Policy and Terms & Conditions: a small list card for the Profile tab
 // that opens each document in a full page. The text lives in lib/legal.js.
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { AnimatePresence } from 'framer-motion'
-import { Card, Sheet, ChevronIcon, divider, muted, faint, accentText } from './ui.jsx'
+import { Card, Sheet, SheetPortal, ChevronIcon, divider, muted, faint, accentText } from './ui.jsx'
 import { PRIVACY, TERMS, LEGAL_UPDATED, CONTACT_EMAIL } from '../lib/legal.js'
 import { t } from '../lib/i18n.js'
 
@@ -69,13 +67,7 @@ export function LegalCard() {
           <ChevronIcon className={`h-5 w-5 ${faint}`} />
         </button>
       ))}
-      {/* Portal: the Profile page sits on a sliding track; a fixed page inside it would be clipped. */}
-      {createPortal(
-        <div data-no-swipe>
-          <AnimatePresence>{doc && <LegalDoc key={open} doc={doc} onClose={() => setOpen(null)} />}</AnimatePresence>
-        </div>,
-        document.body,
-      )}
+      <SheetPortal>{doc && <LegalDoc key={open} doc={doc} onClose={() => setOpen(null)} />}</SheetPortal>
     </Card>
   )
 }

@@ -16,7 +16,7 @@ import { scale, mealTotals, num, fmt0 } from '../lib/calc.js'
 import { STEP_GRAMS, pickedTotals, stepFood, scaleGroup, replaceGroup } from '../lib/picked.js'
 import {
   Card, SectionTitle, Sheet, MacroSummary, Segmented, SearchInput, AddButton, Stepper, ChevronIcon, PencilIcon,
-  PrimaryButton, Chip, ChipRow, focusRing, buttonBg, muted, faint, accentText, fieldBg, divider,
+  PrimaryButton, CheckIcon, Chip, ChipRow, focusRing, buttonBg, muted, faint, accentText, fieldBg, divider,
 } from './ui.jsx'
 import { t, locale, isRTL } from '../lib/i18n.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
@@ -314,7 +314,7 @@ function HoldActions({ food, saved, onAdd, onClose }) {
     <div data-hold-actions className="flex items-center gap-2 pb-2.5">
       {saved || added ? (
         <p role="status" className={`flex min-h-10 items-center gap-1.5 text-sm font-semibold ${accentText}`}>
-          <CheckMark /> {t(added ? 'Added to My Items' : 'Already in My Items')}
+          <CheckIcon className="size-3.5" strokeWidth={3.5} /> {t(added ? 'Added to My Items' : 'Already in My Items')}
         </p>
       ) : (
         <button
@@ -403,11 +403,6 @@ const FilterIcon = () => (
   </svg>
 )
 
-const CheckMark = () => (
-  <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="3.5"
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-)
-
 /**
  * The filter page: diet and nutrition, sort order and the restaurants. Changes
  * apply at once, so the button at the bottom just closes it and says how many
@@ -464,7 +459,7 @@ function FoodFilterSheet({ filters, setFilters, onBrand, brands, count, onClose,
                     <span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
                       on ? 'bg-royal text-white dark:bg-lilac dark:text-black' : 'border-[1.5px] border-zinc-300 dark:border-white/25'
                     }`}>
-                      {on && <CheckMark />}
+                      {on && <CheckIcon className="size-3.5" strokeWidth={3.5} />}
                     </span>
                   </button>
                 </li>

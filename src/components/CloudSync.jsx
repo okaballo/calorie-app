@@ -9,8 +9,8 @@
 // Resources ("Sign in with Apple" logos) and Google's sign-in branding kit.
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Card, SectionTitle, Sheet, PrimaryButton, ConfirmDialog, TextInput, buttonBg, fieldBg, focusRing, muted, faint, accentText } from './ui.jsx'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Card, CheckIcon, SectionTitle, Sheet, SheetPortal, PrimaryButton, ConfirmDialog, TextInput, buttonBg, fieldBg, focusRing, muted, faint, accentText } from './ui.jsx'
 import { useAuth, useSyncStatus } from '../lib/sync/AuthContext.jsx'
 import { LegalDoc } from './LegalPages.jsx'
 import { PRIVACY, TERMS } from '../lib/legal.js'
@@ -202,9 +202,7 @@ function AuthSheet({ onClose }) {
                   onClick={() => setAgreed((v) => !v)}
                   className={`relative flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition before:absolute before:-inset-2.5 before:content-[''] ${focusRing} ${agreed ? 'border-royal bg-royal text-on-accent' : 'border-zinc-400 bg-transparent dark:border-white/40'}`}
                 >
-                  {agreed && (
-                    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-                  )}
+                  {agreed && <CheckIcon className="size-3.5" strokeWidth={3.5} />}
                 </button>
                 <p id="agree-text" className={`text-[13px] leading-snug ${muted}`}>
                   {t('I agree to the')}{' '}
@@ -248,15 +246,9 @@ function AuthSheet({ onClose }) {
         )}
       </div>
 
-      {/* Portal: the sheet is transformed, which would clip a fixed page placed inside it. */}
-      {createPortal(
-        <div data-no-swipe>
-          <AnimatePresence>
-            {doc && <LegalDoc key={doc} doc={doc === 'terms' ? TERMS : PRIVACY} onClose={() => setDoc(null)} z="z-[60]" />}
-          </AnimatePresence>
-        </div>,
-        document.body,
-      )}
+      <SheetPortal>
+        {doc && <LegalDoc key={doc} doc={doc === 'terms' ? TERMS : PRIVACY} onClose={() => setDoc(null)} z="z-[60]" />}
+      </SheetPortal>
     </Sheet>
   )
 }
@@ -417,13 +409,7 @@ export function CloudSyncCard() {
         </>
       )}
 
-      {/* Portal: the Profile page sits on a sliding track; a fixed sheet inside it would be clipped. */}
-      {createPortal(
-        <div data-no-swipe>
-          <AnimatePresence>{open && !user && <AuthSheet key="auth" onClose={() => setOpen(false)} />}</AnimatePresence>
-        </div>,
-        document.body,
-      )}
+      <SheetPortal>{open && !user && <AuthSheet key="auth" onClose={() => setOpen(false)} />}</SheetPortal>
 
       {confirmOut && (
         <ConfirmDialog

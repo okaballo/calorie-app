@@ -1,7 +1,7 @@
 // One exercise with its sets, used while logging a workout and while editing a
 // routine. The three-line handle at the top right drags it to a new place: while
 // the handle is held the card follows the finger, and each time it passes its
-// neighbour's middle the two swap (`onMove(-1 | 1)`). Done by hand, with no
+// neighbour's middle the two swap (`ops.move`). Done by hand, with no
 // layout animation, which would squash the card whenever its height changes.
 //
 // The three-dot menu at the top right holds everything that is not about a set:
@@ -25,13 +25,8 @@ import { flushSync } from 'react-dom'
 import { animate, motion, useMotionValue } from 'framer-motion'
 import { num, fmt0, fmt1 } from '../lib/calc.js'
 import { exerciseOf, isBodyweight, setText } from '../lib/workouts.js'
-import { Card, muted, faint, accentText, fieldBg, buttonBg, focusRing, placeholder } from './ui.jsx'
+import { Card, CheckIcon, muted, faint, accentText, fieldBg, buttonBg, focusRing, placeholder } from './ui.jsx'
 import { t } from '../lib/i18n.js'
-
-const CheckIcon = ({ className = 'h-4 w-4' }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="3"
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-)
 
 const DotsIcon = () => (
   <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor" aria-hidden="true">
@@ -102,18 +97,6 @@ function CardMenu({ items, label }) {
 // history (`previous`, `best`) or its superset position changes.
 function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, tag = null, ops }) {
   const id = entry.id
-  const onSwap = () => ops.swap(entry)
-  const onMove = (dir) => ops.move(id, dir)
-  const onRemove = () => ops.remove(id)
-  const onSet = (setId, patch) => ops.setSet(id, setId, patch)
-  const onAddSet = () => ops.addSet(id)
-  const onRemoveSet = (setId) => ops.removeSet(id, setId)
-  const onAddPartner = () => ops.addPartner(entry)
-  const onUnlink = () => ops.unlink(id)
-  const onToggleDropSet = () => ops.toggleDropSet(id)
-  const onDrop = (setId, dropId, patch) => ops.patchDrop(id, setId, dropId, patch)
-  const onAddDrop = (setId) => ops.addDrop(id, setId)
-  const onRemoveDrop = (setId, dropId) => ops.removeDrop(id, setId, dropId)
   const ex = exerciseOf(entry)
   const bodyweight = isBodyweight(ex)
   const grid = planning ? PLAN_GRID : LOG_GRID
@@ -151,7 +134,7 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
         const gap = dir > 0 ? sib.offsetTop - (el.offsetTop + el.offsetHeight) : el.offsetTop - (sib.offsetTop + sib.offsetHeight)
         // swap once the card's leading edge is past the neighbour's middle
         if (Math.abs(dy) > sib.offsetHeight / 2 + gap) {
-          flushSync(() => onMove(dir))
+          flushSync(() => ops.move(id, dir))
           startY += dir * (sib.offsetHeight + gap)
           dy = ev.clientY - startY
         }
@@ -179,22 +162,22 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
   const toggleDone = (set, i) => {
     const h = hint(i)
     const fill = !set.done && h ? { kg: set.kg || (num(h.kg) > 0 ? String(h.kg) : ''), reps: set.reps || String(num(h.reps)) } : {}
-    onSet(set.id, { ...fill, done: !set.done })
+    ops.setSet(id, set.id, { ...fill, done: !set.done })
     // Ticking a set also fills its planned drops.
     if (!set.done) {
       (set.drops ?? []).forEach((d, j) => {
         const dh = dropHint(i, j)
-        if (dh && !d.reps) onDrop(set.id, d.id, { kg: d.kg || (num(dh.kg) > 0 ? String(dh.kg) : ''), reps: String(num(dh.reps)) })
+        if (dh && !d.reps) ops.patchDrop(id, set.id, d.id, { kg: d.kg || (num(dh.kg) > 0 ? String(dh.kg) : ''), reps: String(num(dh.reps)) })
       })
     }
   }
 
   const menu = [
-    ex.muscle && { label: t('Swap exercise'), onClick: onSwap },
-    { label: t(tag ? 'Add to superset' : 'Add superset exercise'), onClick: onAddPartner },
-    tag && { label: t('Remove from superset'), onClick: onUnlink },
-    { label: t('Drop set'), onClick: onToggleDropSet, on: Boolean(entry.dropSet) },
-    { label: t('Remove exercise'), onClick: onRemove, danger: true },
+    ex.muscle && { label: t('Swap exercise'), onClick: () => ops.swap(entry) },
+    { label: t(tag ? 'Add to superset' : 'Add superset exercise'), onClick: () => ops.addPartner(entry) },
+    tag && { label: t('Remove from superset'), onClick: () => ops.unlink(id) },
+    { label: t('Drop set'), onClick: () => ops.toggleDropSet(id), on: Boolean(entry.dropSet) },
+    { label: t('Remove exercise'), onClick: () => ops.remove(id), danger: true },
   ]
 
   return (
@@ -263,7 +246,7 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
                       {previous[i] ? (
                         // Tap the previous set to copy it into this one.
                         <button
-                          onClick={() => onSet(set.id, { kg: num(previous[i].kg) > 0 ? String(previous[i].kg) : '', reps: String(previous[i].reps) })}
+                          onClick={() => ops.setSet(id, set.id, { kg: num(previous[i].kg) > 0 ? String(previous[i].kg) : '', reps: String(previous[i].reps) })}
                           className={`max-w-full truncate text-start text-xs tabular-nums ${faint}`}
                         >
                           {setText(previous[i], bodyweight)}
@@ -281,12 +264,12 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
                   )}
                   <input
                     inputMode="decimal" value={set.kg} placeholder={h && num(h.kg) > 0 ? fmt1(num(h.kg)) : '0'}
-                    onChange={(e) => onSet(set.id, { kg: e.target.value })}
+                    onChange={(e) => ops.setSet(id, set.id, { kg: e.target.value })}
                     aria-label={t(bodyweight ? 'Set {n} extra weight' : 'Set {n} weight', { n: i + 1 })} className={input}
                   />
                   <input
                     inputMode="numeric" value={set.reps} placeholder={h ? fmt0(num(h.reps)) : '0'}
-                    onChange={(e) => onSet(set.id, { reps: e.target.value })}
+                    onChange={(e) => ops.setSet(id, set.id, { reps: e.target.value })}
                     aria-label={t('Set {n} reps', { n: i + 1 })} className={input}
                   />
                   {!planning && (
@@ -302,7 +285,7 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
                     </button>
                   )}
                   <button
-                    onClick={() => onRemoveSet(set.id)}
+                    onClick={() => ops.removeSet(id, set.id)}
                     aria-label={t('Remove set {n}', { n: i + 1 })}
                     className={`text-lg leading-none ${faint}`}
                   >
@@ -320,17 +303,17 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
                           {!planning && <span className={`text-xs ${faint}`}>{t('Drop')} {j + 1}</span>}
                           <input
                             inputMode="decimal" value={d.kg} placeholder={dh && num(dh.kg) > 0 ? fmt1(num(dh.kg)) : '0'}
-                            onChange={(e) => onDrop(set.id, d.id, { kg: e.target.value })}
+                            onChange={(e) => ops.patchDrop(id, set.id, d.id, { kg: e.target.value })}
                             aria-label={t('Set {n} drop {d} weight', { n: i + 1, d: j + 1 })} className={input}
                           />
                           <input
                             inputMode="numeric" value={d.reps} placeholder={dh ? fmt0(num(dh.reps)) : '0'}
-                            onChange={(e) => onDrop(set.id, d.id, { reps: e.target.value })}
+                            onChange={(e) => ops.patchDrop(id, set.id, d.id, { reps: e.target.value })}
                             aria-label={t('Set {n} drop {d} reps', { n: i + 1, d: j + 1 })} className={input}
                           />
                           {!planning && <span />}
                           <button
-                            onClick={() => onRemoveDrop(set.id, d.id)}
+                            onClick={() => ops.removeDrop(id, set.id, d.id)}
                             aria-label={t('Remove drop {d}', { d: j + 1 })}
                             className={`text-lg leading-none ${faint}`}
                           >
@@ -340,7 +323,7 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
                       )
                     })}
                     <button
-                      onClick={() => onAddDrop(set.id)}
+                      onClick={() => ops.addDrop(id, set.id)}
                       className={`mt-1 ms-8 text-xs font-semibold ${accentText}`}
                     >
                       + {t('Add drop')}
@@ -353,7 +336,7 @@ function ExerciseCard({ entry, previous = NONE, best = NONE, planning = false, t
         </div>
 
         <button
-          onClick={onAddSet}
+          onClick={() => ops.addSet(id)}
           className={`w-full rounded-xl py-2 text-sm font-semibold transition active:scale-[0.98] ${buttonBg} ${accentText}`}
         >
           + {t('Add Set')}

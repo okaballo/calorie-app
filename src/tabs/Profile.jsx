@@ -6,7 +6,7 @@ import { toAvatarDataUrl } from '../lib/image.js'
 import { applyBackup, exportBackup, parseBackup } from '../lib/backup.js'
 import { revealTheme } from '../lib/theme.js'
 import {
-  Card, SectionTitle, PageTitle, TextInput, FieldRow, GlassSwitch, Avatar, ChevronIcon,
+  Card, SectionTitle, PageTitle, TextInput, FieldRow, GlassSwitch, Avatar, CheckIcon, ChevronIcon,
   ConfirmDialog, focusRing, divider, muted, faint, accentText,
 } from '../components/ui.jsx'
 import { locale, t } from '../lib/i18n.js'
@@ -110,10 +110,7 @@ function ThemePicker({ theme, onTheme, lang }) {
                 <span className={`flex size-5 shrink-0 items-center justify-center rounded-full ${
                   selected ? 'bg-royal text-white dark:bg-lilac dark:text-black' : 'border-[1.5px] border-zinc-300 dark:border-white/25'
                 }`}>
-                  {selected && (
-                    <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.5"
-                      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-                  )}
+                  {selected && <CheckIcon className="size-3" strokeWidth={3.5} />}
                 </span>
                 <span className={`text-[15px] leading-tight text-balance ${selected ? 'font-semibold' : 'font-medium'}`}>{t(label)}</span>
               </span>

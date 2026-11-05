@@ -2,13 +2,12 @@
 // three macro rings, the meals of the ACTIVE tracking day, then the
 // analytics section (passed in as `analytics`, see components/Analytics.jsx).
 // The day only changes when the user confirms Start New Day.
-import { createPortal } from 'react-dom'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import { ZERO, add, mealTotals, mealGrams, mealDay, parseDay, dayKey, currentWeek, dayTotals, dateFormat, num, fmt0 } from '../lib/calc.js'
 import {
-  Card, SectionTitle, PrimaryButton, CalorieRing, MiniRing, MacroSummary, Avatar, PencilIcon, TrashIcon, EmptyState,
-  ConfirmDialog, NameDialog, focusRing, hitSlopY, muted, faint, accentText, divider, project, useRowMotion,
+  Card, SectionTitle, PrimaryButton, CalorieRing, MiniRing, MacroSummary, Avatar, CheckIcon, PencilIcon, TrashIcon, EmptyState,
+  SheetPortal, ConfirmDialog, NameDialog, focusRing, hitSlopY, muted, faint, accentText, divider, project, useRowMotion,
 } from '../components/ui.jsx'
 import { t, locale, isRTL } from '../lib/i18n.js'
 import { StreakChip, CalorieStreakSheet, StreakIcon } from '../components/Streaks.jsx'
@@ -67,7 +66,7 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, onViewDay }
   // new week with no visible change (the neighbour already looks the same).
   useLayoutEffect(() => {
     anim.current?.stop()
-    x.jump?.(0) ?? x.set(0)
+    x.jump(0)
   }, [viewDay, x])
 
   // The track follows the finger 1:1 (from wherever it was grabbed, even
@@ -158,10 +157,7 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, onViewDay }
                 ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900'
                 : `border-2 ${selected ? 'border-zinc-500 dark:border-zinc-400' : 'border-zinc-300 dark:border-zinc-600'}`
             }`}>
-              {logged && (
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3"
-                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-              )}
+              {logged && <CheckIcon className="h-3.5 w-3.5" />}
             </span>
             {/* A small streak icon marks a day that stayed inside the calorie range (the height is kept on every day). */}
             <span className="flex h-3 items-center text-streak" aria-hidden="true">
@@ -241,21 +237,16 @@ export default function Home({
           </button>
         </div>
       </header>
-      {createPortal(
-        <div data-no-swipe>
-          <AnimatePresence>
-            {streakOpen && (
-              <CalorieStreakSheet
-                streak={streak} calories={streak.todayKcal} hint={!statsEntered}
-                onOpenPlan={() => { setStreakOpen(false); onOpenPlan() }}
-                dayLetter={(key) => dateFormat(locale(), { weekday: 'narrow' }).format(parseDay(key))}
-                onClose={() => setStreakOpen(false)}
-              />
-            )}
-          </AnimatePresence>
-        </div>,
-        document.body,
-      )}
+      <SheetPortal>
+        {streakOpen && (
+          <CalorieStreakSheet
+            streak={streak} calories={streak.todayKcal} hint={!statsEntered}
+            onOpenPlan={() => { setStreakOpen(false); onOpenPlan() }}
+            dayLetter={(key) => dateFormat(locale(), { weekday: 'narrow' }).format(parseDay(key))}
+            onClose={() => setStreakOpen(false)}
+          />
+        )}
+      </SheetPortal>
 
       <WeekStrip viewDay={viewDay} activeDate={activeDay.date} meals={meals} cheatDays={cheatDays} hitDays={streak.hitDays} onViewDay={onViewDay} />
 

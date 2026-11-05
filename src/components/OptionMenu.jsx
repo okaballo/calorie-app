@@ -8,7 +8,7 @@
 // data-no-swipe keeps drags here from switching tabs.
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { accentText } from './ui.jsx'
+import { CheckIcon, accentText } from './ui.jsx'
 
 export default function OptionMenu({ value, options, onChange, label }) {
   const [open, setOpen] = useState(false)
@@ -91,10 +91,7 @@ export default function OptionMenu({ value, options, onChange, label }) {
                   }`}
                 >
                   <span className="truncate">{option.label}</span>
-                  {on && (
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="3"
-                      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-                  )}
+                  {on && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
                 </button>
               )
             })}

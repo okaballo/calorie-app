@@ -14,8 +14,6 @@
 //   Splits Suggestions         SplitsSheet: pick exercises for a new routine
 //   Start / Continue Routine   WorkoutSessionSheet: log the sets
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { AnimatePresence } from 'framer-motion'
 import { fmt0, parseDay } from '../lib/calc.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import {
@@ -23,11 +21,11 @@ import {
   workoutStats,
 } from '../lib/workouts.js'
 import {
-  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, EmptyState, ConfirmDialog, muted, faint, accentText, buttonBg, divider,
+  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, EmptyState, ConfirmDialog, SheetPortal, muted, faint, accentText, buttonBg, divider,
 } from '../components/ui.jsx'
 import { LineChart } from '../components/Charts.jsx'
 import OptionMenu from '../components/OptionMenu.jsx'
-import WorkoutSessionSheet from '../components/WorkoutSessionSheet.jsx'
+import WorkoutSessionSheet, { WorkoutStatsRow } from '../components/WorkoutSessionSheet.jsx'
 import RoutineSheet from '../components/RoutineSheet.jsx'
 import SplitsSheet from '../components/SplitsSheet.jsx'
 import { t, locale } from '../lib/i18n.js'
@@ -98,19 +96,14 @@ export default function Workout({
           label={`${t('Workout streak')}: ${streak.current}`} onClick={() => setStreakOpen(true)}
         />
       }>{t('Workout')}</PageTitle>
-      {createPortal(
-        <div data-no-swipe>
-          <AnimatePresence>
-            {streakOpen && (
-              <WorkoutStreakSheet
-                streak={streak} onTarget={onStreakTarget} onClose={() => setStreakOpen(false)}
-                weekLabel={(start) => dayLabel(start, { day: 'numeric', month: 'short' })}
-              />
-            )}
-          </AnimatePresence>
-        </div>,
-        document.body,
-      )}
+      <SheetPortal>
+        {streakOpen && (
+          <WorkoutStreakSheet
+            streak={streak} onTarget={onStreakTarget} onClose={() => setStreakOpen(false)}
+            weekLabel={(start) => dayLabel(start, { day: 'numeric', month: 'short' })}
+          />
+        )}
+      </SheetPortal>
 
       {/* ---- The workout in progress: blank until a routine is started ---- */}
       <Card className="space-y-3.5">
@@ -126,22 +119,7 @@ export default function Workout({
               <p className="min-w-0 truncate text-[17px] font-semibold">{workout.name.trim() || t('Workout')}</p>
               {workout.startedAt && <Elapsed startedAt={workout.startedAt} className={`shrink-0 text-3xl font-bold leading-none ${accentText}`} />}
             </div>
-            <div className="grid grid-cols-3 divide-x divide-black/6 text-center dark:divide-white/8">
-              <div>
-                <p className="text-xl font-semibold tabular-nums">{stats.exercises}</p>
-                <p className={`text-xs ${muted}`}>{t('Exercises')}</p>
-              </div>
-              <div>
-                <p className="text-xl font-semibold tabular-nums">
-                  {stats.done}<span className={`text-sm font-normal ${muted}`}>/{stats.sets}</span>
-                </p>
-                <p className={`text-xs ${muted}`}>{t('Sets done')}</p>
-              </div>
-              <div>
-                <p className={`text-xl font-semibold tabular-nums ${stats.volume > 0 ? accentText : ''}`}>{fmt0(stats.volume)}</p>
-                <p className={`text-xs ${muted}`}>{t('Volume (kg)')}</p>
-              </div>
-            </div>
+            <WorkoutStatsRow stats={stats} />
             <div className="flex gap-3">
               {/* Quiet graphite, like the app's inputs: Continue is the main action. */}
               <button
@@ -304,44 +282,36 @@ export default function Workout({
         />
       )}
 
-      {/* Portal: the tab pages sit on a transformed track (see ui.jsx
-          DialogShell). React events still bubble to the pager, so
-          data-no-swipe keeps drags inside the sheets from switching tabs. */}
-      {createPortal(
-        <div data-no-swipe>
-          <AnimatePresence>
-            {session && (
-              <WorkoutSessionSheet
-                key="session"
-                day={day} dayLabel={dayLabel(day)}
-                workout={workout} history={history} routines={routines} bodyWeight={bodyWeight}
-                onUpdate={onUpdate} onFinish={onFinish} onSaveRoutine={onSaveRoutine}
-                onClose={() => setSession(false)}
-              />
-            )}
-            {routineEditing && (
-              <RoutineSheet
-                key="routine"
-                routine={routineEditing === 'new' ? null : routineEditing} draft={routineDraft} bodyWeight={bodyWeight}
-                onSave={onSaveRoutine} onDelete={onDeleteRoutine}
-                onClose={() => { setRoutineEditing(null); setRoutineDraft(null) }}
-              />
-            )}
-            {splitsOpen && (
-              <SplitsSheet
-                key="splits"
-                onNext={(exercises, dayName) => {
-                  setRoutineDraft({ name: dayName ? t(dayName) : '', exercises })
-                  setRoutineEditing('new')
-                  setSplitsOpen(false)
-                }}
-                onClose={() => setSplitsOpen(false)}
-              />
-            )}
-          </AnimatePresence>
-        </div>,
-        document.body,
-      )}
+      <SheetPortal>
+        {session && (
+          <WorkoutSessionSheet
+            key="session"
+            day={day} dayLabel={dayLabel(day)}
+            workout={workout} history={history} routines={routines} bodyWeight={bodyWeight}
+            onUpdate={onUpdate} onFinish={onFinish} onSaveRoutine={onSaveRoutine}
+            onClose={() => setSession(false)}
+          />
+        )}
+        {routineEditing && (
+          <RoutineSheet
+            key="routine"
+            routine={routineEditing === 'new' ? null : routineEditing} draft={routineDraft} bodyWeight={bodyWeight}
+            onSave={onSaveRoutine} onDelete={onDeleteRoutine}
+            onClose={() => { setRoutineEditing(null); setRoutineDraft(null) }}
+          />
+        )}
+        {splitsOpen && (
+          <SplitsSheet
+            key="splits"
+            onNext={(exercises, dayName) => {
+              setRoutineDraft({ name: dayName ? t(dayName) : '', exercises })
+              setRoutineEditing('new')
+              setSplitsOpen(false)
+            }}
+            onClose={() => setSplitsOpen(false)}
+          />
+        )}
+      </SheetPortal>
     </>
   )
 }

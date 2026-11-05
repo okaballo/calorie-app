@@ -5,13 +5,8 @@
 // named after the first day added in full.
 import { useState } from 'react'
 import { SPLITS, splitDayExercises } from '../lib/exercisesDB.ts'
-import { Sheet, AddButton, Card, muted, faint, accentText, divider } from './ui.jsx'
+import { Sheet, AddButton, Card, CheckIcon, muted, faint, accentText, divider } from './ui.jsx'
 import { t } from '../lib/i18n.js'
-
-const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3"
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-)
 
 export default function SplitsSheet({ onNext, onClose }) {
   const [picked, setPicked] = useState([]) // exercises, in tap order

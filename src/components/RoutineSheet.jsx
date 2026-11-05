@@ -6,9 +6,9 @@
 import { useRef, useState } from 'react'
 import { newEntry, editEntries, exerciseOf, toRoutine, swapEntry, addPartners, supersetTags } from '../lib/workouts.js'
 import { useEntryOps } from '../lib/useEntryOps.js'
-import { PrimaryButton, Sheet, TextInput, ConfirmDialog, muted, accentText } from './ui.jsx'
+import { PrimaryButton, Sheet, SheetPortal, TextInput, ConfirmDialog, muted, accentText } from './ui.jsx'
 import ExerciseCard from './ExerciseCard.jsx'
-import ExercisePickerSheet, { PickerPortal } from './ExercisePickerSheet.jsx'
+import ExercisePickerSheet from './ExercisePickerSheet.jsx'
 import { t } from '../lib/i18n.js'
 
 export default function RoutineSheet({ routine, draft = null, bodyWeight = 0, onSave, onDelete, onClose }) {
@@ -62,7 +62,7 @@ export default function RoutineSheet({ routine, draft = null, bodyWeight = 0, on
         </button>
       )}
 
-      <PickerPortal>
+      <SheetPortal>
         {picker && (
           <ExercisePickerSheet
             key="exercise-picker"
@@ -77,7 +77,7 @@ export default function RoutineSheet({ routine, draft = null, bodyWeight = 0, on
             onClose={() => setPicker(null)}
           />
         )}
-      </PickerPortal>
+      </SheetPortal>
 
       {confirmDelete && (
         <ConfirmDialog
