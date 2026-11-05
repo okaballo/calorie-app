@@ -98,7 +98,8 @@ export function onHydrate(key, cb) {
 function writeLocal(key, value) {
   const raw = JSON.stringify(value)
   if (ls.get(key) === raw) return
-  ls.set(key, raw)
+  // Storage full: stop here so the pull's cursor stays put and these rows are fetched again.
+  if (!ls.set(key, raw)) throw new SyncError('Could not save synced data on this device', 'server')
   snap[key] = raw
   hydrators.get(key)?.forEach((cb) => { try { cb() } catch { /* a hook went away */ } })
 }

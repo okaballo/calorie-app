@@ -3,7 +3,7 @@
 //   - calories roughly match 4 x protein + 4 x carbs + 9 x fat (catches typos)
 //   - diet, type and portion values are valid
 // Exits with a non-zero code when anything fails.
-import { SEED_FOODS, TRANSLATIONS, FOOD_BRANDS } from '../src/lib/foods.js'
+import { SEED_FOODS } from '../src/lib/foods.js'
 
 const TYPES = ['meat', 'seafood', 'dairy', 'grains', 'legumes', 'veg', 'fruit', 'nuts', 'fats', 'sweets',
   'drinks', 'snacks', 'supp', 'meals', 'fastfood', 'restaurant']
@@ -21,7 +21,7 @@ for (const f of SEED_FOODS) {
   seenNames.set(key, true)
   if (seenIds.has(f.id)) problems.push(`duplicate id: ${f.id} (${f.name})`)
   seenIds.set(f.id, true)
-  if (!TRANSLATIONS[f.name] || !/[\u0600-\u06FF]/.test(TRANSLATIONS[f.name])) problems.push(`no Arabic name: ${f.name}`)
+  if (!/[\u0600-\u06FF]/.test(f.ar ?? '')) problems.push(`no Arabic name: ${f.name}`)
   if (!TYPES.includes(f.type)) problems.push(`bad type ${f.type}: ${f.name}`)
   if (!['V', 'T', ''].includes(f.diet)) problems.push(`bad diet ${JSON.stringify(f.diet)}: ${f.name}`)
   if (f.diet !== '' && /\b(chicken|beef|lamb|tuna|salmon|shrimp|fish|meat|liver|sausage|kofta|kebab|shawarma)\b/i.test(f.name) && f.diet !== 'T' && f.type !== 'sweets') {
@@ -39,7 +39,8 @@ for (const f of SEED_FOODS) {
 }
 
 const brandItems = SEED_FOODS.filter((f) => f.brand).length
-console.log(`${SEED_FOODS.length} foods, ${FOOD_BRANDS.length} restaurants (${brandItems} items),`,
+const brandCount = new Set(SEED_FOODS.filter((f) => f.brand).map((f) => f.brand)).size
+console.log(`${SEED_FOODS.length} foods, ${brandCount} restaurants (${brandItems} items),`,
   `${SEED_FOODS.filter((f) => f.region).length} Middle Eastern`)
 console.log(counts)
 if (problems.length) {

@@ -1,7 +1,7 @@
 // Hand-drawn SVG charts: no chart library, so nothing extra to download or cache.
 // dir="ltr" keeps the axes and text anchors in place in the Arabic layout.
 import { useId } from 'react'
-import { fmt0, fmt1 } from '../lib/calc.js'
+import { fmt0, fmt1, parseDay } from '../lib/calc.js'
 import { t, locale } from '../lib/i18n.js'
 
 const W = 320
@@ -128,7 +128,7 @@ export function LineChart({ points, pad = 1.5, format = fmt1, label: ariaLabel =
   const values = points.map((p) => p.value)
   const lo = Math.min(...values) - pad
   const hi = Math.max(...values) + pad
-  const times = points.map((p) => new Date(p.date).getTime())
+  const times = points.map((p) => parseDay(p.date).getTime())
   const t0 = times[0]
   const span = times[times.length - 1] - t0
 
@@ -140,7 +140,7 @@ export function LineChart({ points, pad = 1.5, format = fmt1, label: ariaLabel =
   const coords = points.map((p, i) => [x(times[i]), y(p.value)])
   const line = coords.map(([px, py]) => `${px},${py}`).join(' ')
   const area = `${coords[0][0]},${y(lo)} ${line} ${coords[coords.length - 1][0]},${y(lo)}`
-  const label = (date) => new Date(date).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
+  const label = (date) => parseDay(date).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 
   return (
     <svg dir="ltr" viewBox={`0 0 ${W} ${H}`} className="w-full text-zinc-900 dark:text-white" role="img" aria-label={ariaLabel}>

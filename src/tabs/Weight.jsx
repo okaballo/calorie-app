@@ -1,7 +1,7 @@
 // Weight tab: log a weight with a date and see the trend line.
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { num, fmt1, dayKey } from '../lib/calc.js'
+import { num, fmt1, dayKey, parseDay } from '../lib/calc.js'
 import {
   Card, SectionTitle, PageTitle, PrimaryButton, StatTile, FieldRow, TrashIcon, EmptyState,
   focusRing, focusWithin, hitSlopY, faint, accentText, fieldBg, useRowMotion,
@@ -71,7 +71,7 @@ export default function Weight({ entries, onAdd, onDelete }) {
             {[...entries].reverse().map((entry) => (
               <motion.li key={entry.id} {...rowMotion} className="flex items-center py-1.5">
                 <span className="flex-1">
-                  {new Date(entry.date).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {parseDay(entry.date).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
                 <span className={`tabular-nums ${accentText}`}>{fmt1(entry.kg)} {t('kg')}</span>
                 <button
