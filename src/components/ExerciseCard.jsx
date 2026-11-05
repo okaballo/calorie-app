@@ -55,10 +55,11 @@ function CardMenu({ items, label }) {
     const away = (e) => { if (!root.current?.contains(e.target)) setOpen(false) }
     const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }
     document.addEventListener('pointerdown', away)
-    document.addEventListener('keydown', esc)
+    // Capture phase: the sheet's own Escape listener is also on document and was added first.
+    document.addEventListener('keydown', esc, true)
     return () => {
       document.removeEventListener('pointerdown', away)
-      document.removeEventListener('keydown', esc)
+      document.removeEventListener('keydown', esc, true)
     }
   }, [open])
 
