@@ -17,10 +17,7 @@
   --color-field: #26262e;       /* dark input */
   --color-canvas: #f7f7f8;      /* light page background: soft off-white */
 
-  /* shadcn tokens used by components/ui (mapped onto the Royal Purple theme) */
-  --color-primary: #7851a9;
-  --color-primary-foreground: #ffffff;
-  --color-ring: #7851a9;
+  --color-ring: #7851a9;        /* focus ring of the tab bar's "+" */
   --color-carbs: #8c9eff;
   --color-carbs-deep: #5468e0;  /* carbs text on light backgrounds */
   --color-fat: #ed85d9;
@@ -84,7 +81,6 @@ html, body, #root { height: 100%; }
   --color-canvas: #e4e8ee;
   --color-royal: #2a2f3d;
   --color-lilac: #6b7285;
-  --color-primary: #2a2f3d;
   --color-ring: #2a2f3d;
   --color-subtle: #575e72;
   --color-carbs-deep: #4b5266;
@@ -120,7 +116,6 @@ html, body, #root { height: 100%; }
   --color-canvas: #25282f;
   --color-royal: #c8ceda;
   --color-lilac: #e6e9f0;
-  --color-primary: #c8ceda;
   --color-ring: #c8ceda;
   --color-on-accent: #15171d;
   --color-carbs: #aab1c0;

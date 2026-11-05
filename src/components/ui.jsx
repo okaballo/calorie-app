@@ -39,9 +39,8 @@ export const hitSlopY = "relative before:absolute before:-inset-x-1 before:-inse
 /** Focus ring for a field row, drawn on the row while its input has focus. */
 export const focusWithin = 'focus-within:ring-2 focus-within:ring-royal/60 dark:focus-within:ring-lilac/70'
 
-/** Liquid Glass edge: the rim highlights of LiquidButton
- *  (components/ui/liquid-glass-button.tsx), for any glass surface. Put it on
- *  an absolute inset layer so the surface keeps its own drop shadow. */
+/** Liquid Glass edge: rim highlights for any glass surface. Put it on an
+ *  absolute inset layer so the surface keeps its own drop shadow. */
 export const glassRim =
   'shadow-[inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] ' +
   'dark:shadow-[inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)]'

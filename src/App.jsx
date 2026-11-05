@@ -22,7 +22,6 @@ import {
 } from 'framer-motion'
 import { useDrag } from '@use-gesture/react'
 import { SPRING, glassRim, GlassBackdrop } from './components/ui.jsx'
-import { LiquidButton } from '@/components/ui/liquid-glass-button'
 import { useLocalStorage } from './lib/useLocalStorage.js'
 import { dayKey, nextTrackingDay, mealDay, parseDay, previousDay, num, tdee } from './lib/calc.js'
 import { isRTL, setLanguage, t } from './lib/i18n.js'
@@ -300,20 +299,19 @@ const TabBar = memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
       </motion.div>
 
       {/* ---- Log a meal: liquid glass ---- */}
-      <LiquidButton
+      <button
+        type="button"
         onClick={onAdd}
         aria-label={t('Log a meal')}
-        size="icon"
-        className="glass-surface pointer-events-auto isolate size-[62px] shrink-0 rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] backdrop-blur-2xl backdrop-saturate-180 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white neu:bg-none [&>div]:rounded-full [&>div:nth-of-type(2)]:hidden neu:border neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised) neu:backdrop-blur-none neu:active:shadow-(--neu-inset) neu:[&>div:nth-of-type(1)]:hidden"
+        className="glass-surface pointer-events-auto relative isolate inline-flex size-[62px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] outline-none backdrop-blur-2xl backdrop-saturate-180 transition duration-300 hover:scale-105 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white neu:border neu:border-(--neu-edge) neu:bg-canvas neu:bg-none neu:shadow-(--neu-raised) neu:backdrop-blur-none neu:active:shadow-(--neu-inset)"
       >
-        {/* No warp on this one: at 56 px it only roughens the circle, so
-            LiquidButton's warp layer is hidden above. Its rim highlights are
-            kept as they are. The glass look comes from the blur, the rim and
-            a fuller tint; the warp stays on the bar. */}
-        <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+        {/* No warp on this one: at 56 px it only roughens the circle. The glass
+            look comes from the blur, the rim and a fuller tint; the warp stays on the bar. */}
+        <div className="absolute top-0 left-0 z-0 h-full w-full rounded-full shadow-[0_0_6px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] transition-shadow dark:shadow-[0_0_8px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)] neu:hidden" />
+        <svg viewBox="0 0 24 24" className="pointer-events-none size-7 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>
-      </LiquidButton>
+      </button>
     </nav>
   )
 })
