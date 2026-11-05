@@ -102,6 +102,11 @@ function writeLocal(key, value) {
   hydrators.get(key)?.forEach((cb) => { try { cb() } catch { /* a hook went away */ } })
 }
 
+/** Another tab wrote this key and already queued the change: remember it, so this tab does not treat it as its own edit. */
+export function noteOtherTabWrite(key) {
+  if (key in snap) snap[key] = ls.get(key)
+}
+
 const saveOutbox = () => { ls.set(K.outbox, JSON.stringify(outbox)); setStatus({}) }
 const saveCursors = () => ls.set(K.cursors, JSON.stringify(cursors))
 

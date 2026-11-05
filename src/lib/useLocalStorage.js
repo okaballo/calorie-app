@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { noteLocalChange, onHydrate } from './sync/syncEngine.js'
+import { noteLocalChange, noteOtherTabWrite, onHydrate } from './sync/syncEngine.js'
 
 const read = (key, initial) => {
   try {
@@ -40,12 +40,25 @@ export function useLocalStorage(key, initial) {
     storingDefault.current = false
   }, [key, value])
 
-  // The cloud changed the key (or another account's data was cleared): re-read it.
+  // The cloud or another open tab changed the key (or another account's data was cleared): re-read it.
   // A cleared key falls back to the default, which again is not an edit.
-  useEffect(() => onHydrate(key, () => {
-    try { if (localStorage.getItem(key) === null) storingDefault.current = true } catch { /* ignore */ }
-    setValue(read(key, initialRef.current))
-  }), [key])
+  useEffect(() => {
+    const reread = () => {
+      try { if (localStorage.getItem(key) === null) storingDefault.current = true } catch { /* ignore */ }
+      setValue(read(key, initialRef.current))
+    }
+    const onStorage = (e) => {
+      if (e.key !== key && e.key !== null) return // null: the whole storage was cleared
+      noteOtherTabWrite(key)
+      reread()
+    }
+    const stopHydrate = onHydrate(key, reread)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      stopHydrate()
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [key])
 
   return [value, setValue]
 }
