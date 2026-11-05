@@ -10,6 +10,15 @@ const LEFT = 38   // room for y-axis labels
 const BOTTOM = 24 // room for x-axis labels
 const TOP = 14
 
+/** Soft neon halo behind a chart's marks. userSpaceOnUse keeps it working even when a line is perfectly flat. */
+const ChartGlow = ({ id }) => (
+  <filter id={id} filterUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
+    <feGaussianBlur stdDeviation="4" result="blur" />
+    <feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
+    <feMerge><feMergeNode in="halo" /><feMergeNode in="SourceGraphic" /></feMerge>
+  </filter>
+)
+
 /**
  * Calorie bars with a dashed goal line. `bars` are { label, value, key? }.
  * Works for 7 to ~31 bars: with many bars they get thinner and only every
@@ -20,7 +29,7 @@ const TOP = 14
  * other bars are dimmed. Bars with `cheat: true` use the red/blue cheat day gradient.
  */
 export function BarChart({ bars, goal, label = 'Calories chart', selected = null, onSelect }) {
-  const max = Math.max(goal, ...bars.map((d) => (d.cheat ? 0 : d.value)), 1) * 1
+  const max = Math.max(goal, ...bars.map((d) => (d.cheat ? 0 : d.value)), 1)
   const plotH = H - TOP - BOTTOM
   const y = (v) => TOP + plotH * (1 - v / max)
   const slot = (W - LEFT) / bars.length
@@ -39,12 +48,7 @@ export function BarChart({ bars, goal, label = 'Calories chart', selected = null
           <stop offset="0" stopColor="#FF3547" />
           <stop offset="1" stopColor="#6039AA" />
         </linearGradient>
-        {/* Soft neon halo behind the bars. */}
-        <filter id="bar-glow" filterUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
-          <feMerge><feMergeNode in="halo" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
+        <ChartGlow id="bar-glow" />
       </defs>
 
       {[0, 0.5, 1].map((f) => (
@@ -149,13 +153,7 @@ export function LineChart({ points, pad = 1.5, format = fmt1, label: ariaLabel =
           <stop offset="0" style={{ stopColor: 'var(--color-royal)' }} stopOpacity=".45" />
           <stop offset="1" style={{ stopColor: 'var(--color-royal)' }} stopOpacity="0" />
         </linearGradient>
-        {/* Soft neon halo behind the trend line. userSpaceOnUse keeps it
-            working even when the line is perfectly flat. */}
-        <filter id={`line-glow-${uid}`} filterUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
-          <feMerge><feMergeNode in="halo" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
+        <ChartGlow id={`line-glow-${uid}`} />
       </defs>
 
       {[0, 0.5, 1].map((f) => {
