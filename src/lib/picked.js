@@ -4,12 +4,13 @@
 //   group     - set for items that came from a saved meal template (its id);
 //               they are shown together as one card in the picked list
 //   groupName - that saved meal's name, the card's title
-import { num } from './calc.js'
+import { ZERO, add, num, round1, scale } from './calc.js'
 
 /** Grams added or removed by one tap on a food's + / − control. */
 export const STEP_GRAMS = 25
 
-const round1 = (n) => Math.round(n * 10) / 10
+/** Macro totals of picker entries, at the grams currently typed. */
+export const pickedTotals = (entries) => entries.reduce((sum, p) => add(sum, scale(p.food, num(p.grams))), ZERO)
 
 /** Saved meal/template items -> picker entries, so they can be edited. */
 export const toPicked = (items) =>

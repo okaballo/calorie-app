@@ -12,8 +12,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { ZERO, add, scale, num, fmt0 } from '../lib/calc.js'
-import { STEP_GRAMS, stepFood, scaleGroup, replaceGroup } from '../lib/picked.js'
+import { scale, mealTotals, num, fmt0 } from '../lib/calc.js'
+import { STEP_GRAMS, pickedTotals, stepFood, scaleGroup, replaceGroup } from '../lib/picked.js'
 import {
   Card, SectionTitle, Sheet, MacroSummary, Segmented, SearchInput, AddButton, Stepper, ChevronIcon, PencilIcon,
   PrimaryButton, Chip, ChipRow, focusRing, buttonBg, muted, faint, accentText, fieldBg, divider,
@@ -25,8 +25,6 @@ const newKey = () => crypto.randomUUID()
 
 /** Default grams for a newly picked food: its saved portion size, else 100 g. */
 const defaultGrams = (food) => String(food.servingGrams > 0 ? food.servingGrams : 100)
-
-const totalsOf = (entries) => entries.reduce((sum, p) => add(sum, scale(p.food, num(p.grams))), ZERO)
 
 /**
  * Chosen items. Single foods are rows with an editable grams field; the
@@ -85,7 +83,7 @@ export function PickedList({ picked, setPicked, picker, flat = false }) {
 /** A saved meal in the picked list: name, ingredients, totals, edit and remove. */
 function SavedMealCard({ entries, onEdit, onRemove }) {
   const name = entries[0].groupName || t('Saved meal')
-  const totals = totalsOf(entries)
+  const totals = pickedTotals(entries)
   const grams = entries.reduce((g, p) => g + num(p.grams), 0)
   return (
     <div className={`rounded-2xl p-3 ${fieldBg}`}>
@@ -125,7 +123,7 @@ function GroupEditSheet({ groupId, entries, picker, onSave, onClose }) {
   // foodId is dropped so the single-food +/− counters outside never grab a
   // saved meal's ingredient; inside, added foods get their own foodId.
   const [items, setItems] = useState(() => entries.map(({ key, food, grams }) => ({ key, food, grams })))
-  const totals = totalsOf(items)
+  const totals = pickedTotals(items)
   const canSave = items.every((p) => num(p.grams) > 0)
 
   const done = () => {
@@ -713,7 +711,7 @@ export function FoodPicker({
           ) : (
             <ul className={`divide-y ${divider}`}>
               {templateResults.map((tpl, i) => {
-                const tt = tpl.items.reduce((sum, item) => add(sum, scale(item, item.grams)), ZERO)
+                const tt = mealTotals(tpl)
                 return (
                   <ItemRow
                     key={tpl.id}

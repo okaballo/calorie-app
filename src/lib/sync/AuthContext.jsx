@@ -12,12 +12,16 @@ export const cloudConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && impo
 
 const loadSupabase = () => import('../supabaseClient.ts')
 
-/** An OAuth error sent back in the URL (e.g. the person cancelled at Apple). */
-function readOAuthError() {
-  if (typeof window === 'undefined') return null
+/** Reads a value the auth redirect left in the address bar, from ?query or #hash. */
+const fromUrl = (key) => {
   const q = new URLSearchParams(window.location.search)
   const h = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-  const msg = q.get('error_description') || h.get('error_description') || q.get('error') || h.get('error')
+  return q.get(key) || h.get(key)
+}
+
+/** An OAuth error sent back in the URL (e.g. the person cancelled at Apple). */
+function readOAuthError() {
+  const msg = fromUrl('error_description') || fromUrl('error')
   return msg ? msg.replace(/\+/g, ' ') : null
 }
 /** Removes the OAuth leftovers (?code=, ?error=) from the address bar once handled. */
@@ -37,16 +41,50 @@ function cleanUrl() {
  * before the leftovers are cleaned out of the address bar.
  */
 function readArrival() {
-  if (typeof window === 'undefined') return null
-  const q = new URLSearchParams(window.location.search)
-  const h = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-  if (q.get('error_code') || h.get('error_code') || h.get('error') || q.get('error')) {
-    const code = q.get('error_code') || h.get('error_code') || ''
-    return code.includes('expired') || code.includes('otp') ? 'expired' : null
-  }
-  return q.has('code') ? 'verified' : null
+  const code = fromUrl('error_code')
+  if (code || fromUrl('error')) return code?.includes('expired') || code?.includes('otp') ? 'expired' : null
+  return new URLSearchParams(window.location.search).has('code') ? 'verified' : null
 }
 const arrivalAtLoad = readArrival()
+
+const offline = () => navigator.onLine === false
+
+// Each email + password action returns { ok: true } or { error: code }; the sign-up screen words the codes.
+const fail = (e) => {
+  const msg = String(e?.message || '').toLowerCase()
+  const code = e?.code || ''
+  if (e?.name === 'AuthRetryableFetchError' || /fetch|network/.test(msg)) return { error: 'offline' }
+  if (code === 'email_not_confirmed' || msg.includes('not confirmed')) return { error: 'unconfirmed' }
+  if (code === 'invalid_credentials' || msg.includes('invalid login')) return { error: 'invalid' }
+  if (code === 'user_already_exists' || msg.includes('already registered')) return { error: 'exists' }
+  if (code === 'weak_password' || msg.includes('password')) return { error: 'weak' }
+  // The project's email sending limit (Supabase's built-in mail sender allows only a couple per hour):
+  // not something this person did wrong, and no amount of retrying helps until SMTP is set up.
+  if (code === 'over_email_send_rate_limit' || msg.includes('email rate limit')) return { error: 'emailLimit' }
+  if (e?.status === 429 || code.includes('rate_limit') || msg.includes('rate limit') || msg.includes('seconds')) return { error: 'rate' }
+  return { error: 'unknown' }
+}
+
+const signUpEmail = async (email, password) => {
+  if (offline()) return { error: 'offline' }
+  try {
+    const { supabase, authRedirectUrl } = await loadSupabase()
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: authRedirectUrl() } })
+    if (error) return fail(error)
+    // An address that already has an account comes back with no identities (and no email is sent).
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return { error: 'exists' }
+    return { ok: true, needsConfirm: !data.session }
+  } catch (e) { return fail(e) }
+}
+
+const signInEmail = async (email, password) => {
+  if (offline()) return { error: 'offline' }
+  try {
+    const { supabase } = await loadSupabase()
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    return error ? fail(error) : { ok: true }
+  } catch (e) { return fail(e) }
+}
 
 const AuthContext = createContext(null)
 
@@ -86,7 +124,7 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback(async (provider) => {
     setAuthError(null)
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) { setAuthError('offline'); return }
+    if (offline()) { setAuthError('offline'); return }
     setBusy(provider)
     try {
       const { supabase, authRedirectUrl } = await loadSupabase()
@@ -103,54 +141,6 @@ export function AuthProvider({ children }) {
       setAuthError(e?.message || 'Sign-in failed')
       setBusy(null)
     }
-  }, [])
-
-  // ---- Email + password ----
-  // Each returns { ok: true } or { error: code }; the sign-up screen words the codes.
-  const fail = (e) => {
-    const msg = String(e?.message || '').toLowerCase()
-    const code = e?.code || ''
-    if (e?.name === 'AuthRetryableFetchError' || /fetch|network/.test(msg)) return { error: 'offline' }
-    if (code === 'email_not_confirmed' || msg.includes('not confirmed')) return { error: 'unconfirmed' }
-    if (code === 'invalid_credentials' || msg.includes('invalid login')) return { error: 'invalid' }
-    if (code === 'user_already_exists' || msg.includes('already registered')) return { error: 'exists' }
-    if (code === 'weak_password' || msg.includes('password')) return { error: 'weak' }
-    // The project's email sending limit (Supabase's built-in mail sender allows only a couple per hour):
-    // not something this person did wrong, and no amount of retrying helps until SMTP is set up.
-    if (code === 'over_email_send_rate_limit' || msg.includes('email rate limit')) return { error: 'emailLimit' }
-    if (e?.status === 429 || code.includes('rate_limit') || msg.includes('rate limit') || msg.includes('seconds')) return { error: 'rate' }
-    return { error: 'unknown' }
-  }
-  const offline = () => typeof navigator !== 'undefined' && navigator.onLine === false
-
-  const signUpEmail = useCallback(async (email, password) => {
-    if (offline()) return { error: 'offline' }
-    try {
-      const { supabase, authRedirectUrl } = await loadSupabase()
-      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: authRedirectUrl() } })
-      if (error) return fail(error)
-      // An address that already has an account comes back with no identities (and no email is sent).
-      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return { error: 'exists' }
-      return { ok: true, needsConfirm: !data.session }
-    } catch (e) { return fail(e) }
-  }, [])
-
-  const signInEmail = useCallback(async (email, password) => {
-    if (offline()) return { error: 'offline' }
-    try {
-      const { supabase } = await loadSupabase()
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      return error ? fail(error) : { ok: true }
-    } catch (e) { return fail(e) }
-  }, [])
-
-  const resendVerification = useCallback(async (email) => {
-    if (offline()) return { error: 'offline' }
-    try {
-      const { supabase, authRedirectUrl } = await loadSupabase()
-      const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: authRedirectUrl() } })
-      return error ? fail(error) : { ok: true }
-    } catch (e) { return fail(e) }
   }, [])
 
   const signOut = useCallback(async () => {
@@ -186,7 +176,6 @@ export function AuthProvider({ children }) {
     signIn,
     signUpEmail,
     signInEmail,
-    resendVerification,
     arrival,
     dismissArrival: () => setArrival(null),
     signOut,
@@ -194,7 +183,7 @@ export function AuthProvider({ children }) {
     confirmSwitch,
     cancelSwitch,
     syncNow: () => engine.syncNow({ pull: true }),
-  }), [session, busy, authError, arrival, signIn, signUpEmail, signInEmail, resendVerification, signOut, switchTo, confirmSwitch, cancelSwitch])
+  }), [session, busy, authError, arrival, signIn, signOut, switchTo, confirmSwitch, cancelSwitch])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

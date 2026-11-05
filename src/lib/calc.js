@@ -32,8 +32,11 @@ export const num = (value) => {
   return Number.isFinite(n) ? n : 0
 }
 
+export const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
+export const round1 = (n) => Math.round(n * 10) / 10
+
 export const fmt0 = (n) => Math.round(n).toLocaleString()
-export const fmt1 = (n) => (Math.round(n * 10) / 10).toLocaleString()
+export const fmt1 = (n) => round1(n).toLocaleString()
 
 /** Local calendar day as "YYYY-MM-DD". */
 export const dayKey = (date = new Date()) => {
@@ -120,20 +123,26 @@ export const firstWeekday = () => {
   }
 }
 
+/** The first day of the week containing `date`, as a new Date. */
+export const startOfWeek = (date) => {
+  const d = new Date(date)
+  d.setDate(d.getDate() - ((d.getDay() - firstWeekday() + 7) % 7))
+  return d
+}
+
 /**
  * Seven { date, label, totals } entries for the week containing the active
  * tracking day. Meals are grouped by their tracking day, not by the clock.
  */
 export const currentWeek = (meals, activeDate = dayKey(), byDay = dayTotals(meals)) => {
-  const start = parseDay(activeDate)
-  start.setDate(start.getDate() - ((start.getDay() - firstWeekday() + 7) % 7))
+  const start = startOfWeek(parseDay(activeDate))
 
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(start)
     date.setDate(start.getDate() + i)
     return {
       date,
-      label: weekdayFormat(locale(), 'short').format(date),
+      label: dateFormat(locale(), { weekday: 'short' }).format(date),
       totals: byDay[dayKey(date)] || ZERO,
     }
   })
@@ -158,7 +167,6 @@ export const dateFormat = (loc, options) => {
   if (!formats.has(key)) formats.set(key, new Intl.DateTimeFormat(loc, options))
   return formats.get(key)
 }
-const weekdayFormat = (loc, weekday) => dateFormat(loc, { weekday })
 
 // ---- Batch meal divider --------------------------------------------------
 
@@ -206,11 +214,7 @@ export const INTERVALS = ['Week', 'Month', '6 Months', 'Year']
  *   maintenanceTotal  maintenance x those same days, the baseline to compare
  */
 export const periodStats = (meals, activeDate, interval, maintenance = 0) => {
-  const byDay = {}
-  for (const meal of meals) {
-    const key = mealDay(meal)
-    byDay[key] = add(byDay[key] || ZERO, mealTotals(meal))
-  }
+  const byDay = dayTotals(meals)
 
   const anchor = parseDay(activeDate)
   const y = anchor.getFullYear()
@@ -218,8 +222,7 @@ export const periodStats = (meals, activeDate, interval, maintenance = 0) => {
   let start
   let end
   if (interval === 'Week') {
-    start = new Date(anchor)
-    start.setDate(start.getDate() - ((start.getDay() - firstWeekday() + 7) % 7))
+    start = startOfWeek(anchor)
     end = new Date(start)
     end.setDate(start.getDate() + 6)
   } else if (interval === 'Month') {

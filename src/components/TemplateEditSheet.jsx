@@ -6,16 +6,14 @@
 // ingredient's weight is divided by N, so logging it later is a single tap.
 // Leave it at 1 portion to save the ingredients exactly as entered.
 import { useRef, useState } from 'react'
-import { ZERO, add, scale, num, fmt0, divideBatch } from '../lib/calc.js'
-import { toPicked, toItems } from '../lib/picked.js'
+import { num, fmt0, divideBatch, round1 } from '../lib/calc.js'
+import { pickedTotals, toPicked, toItems } from '../lib/picked.js'
 import {
   Card, SectionTitle, Sheet, TextInput, MacroSummary, ConfirmDialog,
   buttonBg, focusRing, muted, faint, accentText,
 } from './ui.jsx'
 import { FoodPicker, PickedList } from './FoodPicker.jsx'
 import { t } from '../lib/i18n.js'
-
-const round1 = (n) => Math.round(n * 10) / 10
 
 export default function TemplateEditSheet({ template, foods, customFoods, templates, onSave, onDelete, onClose, onAddToMyItems }) {
   const creating = !template
@@ -26,7 +24,7 @@ export default function TemplateEditSheet({ template, foods, customFoods, templa
   const initial = useRef(JSON.stringify({ name, picked, portionsText }))
   const dirty = JSON.stringify({ name, picked, portionsText }) !== initial.current // unsaved edits: closing by swipe asks first
 
-  const totals = picked.reduce((sum, p) => add(sum, scale(p.food, num(p.grams))), ZERO)
+  const totals = pickedTotals(picked)
   const rawGrams = picked.reduce((g, p) => g + num(p.grams), 0)
   const portions = Math.max(Math.round(num(portionsText)), 1)
   const { portionGrams, perPortion } = divideBatch(totals, rawGrams, portions)

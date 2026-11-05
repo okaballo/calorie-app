@@ -52,9 +52,7 @@ const parse = (raw, fallback) => { if (raw === null || raw === undefined) return
 const readJSON = (k, fallback) => parse(ls.get(k), fallback)
 
 // ---- state ----
-let loadClient = () => import('../supabaseClient.ts').then((m) => m.supabase)
-/** Tests (and only tests) swap the Supabase client. */
-export const __setClientLoader = (fn) => { loadClient = fn }
+const loadClient = () => import('../supabaseClient.ts').then((m) => m.supabase)
 
 let uid = null                                 // signed-in user whose data we sync (null: paused)
 let outbox = readJSON(K.outbox, {})            // { "meals_log:<id>": entry, "profiles": entry }
@@ -278,7 +276,7 @@ async function pull(sb, me) {
         .order('updated_at', { ascending: true })
         .order('id', { ascending: true })
         .range(from, from + PAGE - 1)
-      if (res.error) throw new SyncError(res.error.message, classify(res) === 'offline' ? 'offline' : classify(res))
+      if (res.error) throw new SyncError(res.error.message, classify(res))
       rows.push(...(res.data || []))
       if (!res.data || res.data.length < PAGE) break
     }
@@ -291,7 +289,7 @@ async function pull(sb, me) {
   }
 
   const res = await sb.from('profiles').select('*').eq('user_id', me).maybeSingle()
-  if (res.error) throw new SyncError(res.error.message, classify(res) === 'offline' ? 'offline' : classify(res))
+  if (res.error) throw new SyncError(res.error.message, classify(res))
   if (uid !== me) return
   const firstSync = ls.get(K.first) === '1'
   const row = res.data
@@ -449,5 +447,3 @@ export function flush(ms = 4000) {
   if (!uid || !Object.keys(outbox).length) return Promise.resolve(true)
   return Promise.race([syncNow(), new Promise((r) => setTimeout(() => r(false), ms))])
 }
-
-export const __debug = { get outbox() { return outbox }, get cursors() { return cursors }, get uid() { return uid }, snap }

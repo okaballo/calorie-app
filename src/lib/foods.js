@@ -19,6 +19,7 @@
 // earlier. This file is loaded on demand by App (a separate chunk), so the
 // first screen does not wait for the data.
 import { addTranslations } from './i18n.js'
+import { round1 } from './calc.js'
 import { GENERIC_A } from './food-data/generic-a.js'
 import { GENERIC_B } from './food-data/generic-b.js'
 import { GENERIC_C } from './food-data/generic-c.js'
@@ -58,7 +59,6 @@ const MIDDLE_EASTERN = new Set([
   'Jujube (Annab)',
 ])
 
-const round1 = (n) => Math.round(n * 10) / 10
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 const foods = []

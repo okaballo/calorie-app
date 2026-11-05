@@ -14,7 +14,7 @@
 // Workout week: starts on the device's first weekday (same as the week strip). The
 // week in progress never breaks the streak and adds one once the target is reached.
 // Several workouts on one day count once.
-import { dayTotals, dayKey, parseDay, firstWeekday } from './calc.js'
+import { dayTotals, dayKey, parseDay, startOfWeek } from './calc.js'
 
 export const OVER = 1.1
 export const LOW = { Cut: 0.6, Maintain: 0.9, Bulk: 0.95 }
@@ -99,11 +99,7 @@ export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
 }
 
 /** Key of the first day of the week containing `key`. */
-export const weekStart = (key) => {
-  const d = parseDay(key)
-  d.setDate(d.getDate() - ((d.getDay() - firstWeekday() + 7) % 7))
-  return dayKey(d)
-}
+export const weekStart = (key) => dayKey(startOfWeek(parseDay(key)))
 
 /**
  * @returns {{

@@ -45,12 +45,6 @@ const Spinner = () => (
 /** Sign-in buttons share one size and layout (Apple: never smaller than the others). */
 const signInButton = `relative flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-[17px] font-semibold transition active:scale-[0.98] disabled:opacity-50 ${focusRing}`
 
-const Benefit = ({ icon, children }) => (
-  <li className="flex items-center gap-4">
-    <span className={`flex size-6 shrink-0 items-center justify-center ${accentText}`}>{icon}</span>
-    <span className="text-base font-medium">{children}</span>
-  </li>
-)
 const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
 
 const MailIcon = ({ className = 'size-6' }) => (

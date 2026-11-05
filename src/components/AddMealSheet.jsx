@@ -7,14 +7,14 @@
 // id, date and tracking day) with the new items; App swaps it into the list
 // and every total derived from meals updates on the next render.
 import { useState } from 'react'
-import { ZERO, add, scale, num, fmt0, fmt1 } from '../lib/calc.js'
+import { num, fmt0, fmt1 } from '../lib/calc.js'
 import { Card, SectionTitle, Sheet, TextInput, focusRing, muted, accentText, carbsText, fatText } from './ui.jsx'
 import { FoodPicker, PickedList } from './FoodPicker.jsx'
-import { toPicked, toItems } from '../lib/picked.js'
+import { pickedTotals, toPicked, toItems } from '../lib/picked.js'
 import { t } from '../lib/i18n.js'
 
 /** Outlined dashed shortcut button (custom meal / meal divider). */
-export const ToolButton = ({ onClick, icon, children }) => (
+const ToolButton =({ onClick, icon, children }) => (
   <button
     onClick={onClick}
     type="button"
@@ -32,7 +32,7 @@ export default function AddMealSheet({
   const [name, setName] = useState(meal?.name ?? '')
   const [picked, setPicked] = useState(() => (meal ? toPicked(meal.items) : []))
 
-  const totals = picked.reduce((sum, p) => add(sum, scale(p.food, num(p.grams))), ZERO)
+  const totals = pickedTotals(picked)
   const canSave = picked.length > 0 && picked.every((p) => num(p.grams) > 0)
 
   // Used when the name field is left empty: each saved meal card by its name
