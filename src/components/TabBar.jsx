@@ -3,7 +3,8 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform, useVelocity,
 } from 'framer-motion'
-import { glassRim, GlassBackdrop } from './ui.jsx'
+// import { glassRim, GlassBackdrop } from './ui.jsx'
+import LiquidGlass from './MyLiquidGlass/OKB-LiquidGlass.jsx'
 import { clamp } from '../lib/calc.js'
 import { isRTL, t } from '../lib/i18n.js'
 
@@ -215,8 +216,9 @@ export default memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
         style={{ scale: barScale }}
         className="glass-surface pointer-events-auto relative isolate h-[62px] min-w-0 flex-1 touch-none select-none rounded-full bg-white/20 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] dark:bg-white/[0.06] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.9)] neu:border neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised)"
       >
-        <GlassBackdrop />
-        <div aria-hidden="true" className={`pointer-events-none absolute inset-0 rounded-full neu:hidden ${glassRim}`} />
+        {/* <GlassBackdrop />
+        <div aria-hidden="true" className={`pointer-events-none absolute inset-0 rounded-full neu:hidden ${glassRim}`} /> */}
+        <LiquidGlass style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
 
         <div ref={rowRef} className="absolute inset-1">
           {/* Resting pill, behind the icons. */}
@@ -244,8 +246,10 @@ export default memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
             className="pointer-events-none absolute inset-y-0 left-0 rounded-full"
             style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, opacity: press }}
           >
-            <div className={`absolute inset-0 rounded-full bg-white/5 neu:bg-transparent neu:shadow-(--neu-inset) ${glassRim}`} />
-            <div className="absolute inset-0 rounded-full shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.55),inset_-2px_0_3px_-1px_rgba(237,133,217,0.5)] neu:hidden" />
+            {/* <div className={`absolute inset-0 rounded-full bg-white/5 neu:bg-transparent neu:shadow-(--neu-inset) ${glassRim}`} />
+            <div className="absolute inset-0 rounded-full shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.55),inset_-2px_0_3px_-1px_rgba(237,133,217,0.5)] neu:hidden" /> */}
+            {/* <LiquidGlass style={{ position: 'absolute', inset: 0, '--lg-tint': 'transparent' }} /> */}
+            <LiquidGlass className="liquid-glass--lens" style={{ position: 'absolute', inset: 0 }} />
           </motion.div>
         </div>
       </motion.div>
@@ -255,12 +259,17 @@ export default memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
         type="button"
         onClick={onAdd}
         aria-label={t('Log a meal')}
-        className="glass-surface pointer-events-auto relative isolate inline-flex size-[62px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] outline-none backdrop-blur-2xl backdrop-saturate-180 transition duration-300 hover:scale-105 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white neu:border neu:border-(--neu-edge) neu:bg-canvas neu:bg-none neu:shadow-(--neu-raised) neu:backdrop-blur-none neu:active:shadow-(--neu-inset)"
+        // className="glass-surface pointer-events-auto relative isolate inline-flex size-[62px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/55 text-royal shadow-[0_0_22px_-2px_rgba(120,81,169,0.5),0_8px_24px_-10px_rgba(120,81,169,0.55)] outline-none backdrop-blur-2xl backdrop-saturate-180 transition duration-300 hover:scale-105 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-90 dark:bg-transparent dark:bg-linear-to-b dark:from-lilac/30 dark:to-royal/30 dark:text-white neu:border neu:border-(--neu-edge) neu:bg-canvas neu:bg-none neu:shadow-(--neu-raised) neu:backdrop-blur-none neu:active:shadow-(--neu-inset)"
+        // No backdrop-blur / gradient here: a backdrop-filter on the button would blind the LiquidGlass inside it.
+        className="glass-surface pointer-events-auto relative isolate inline-flex size-[62px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/20 text-royal shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] outline-none transition duration-300 hover:scale-105 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-90 dark:bg-white/[0.06] dark:text-white dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.9)] neu:border neu:border-(--neu-edge) neu:bg-canvas neu:shadow-(--neu-raised) neu:active:shadow-(--neu-inset)"
       >
         {/* No warp on this one: at 56 px it only roughens the circle. The glass
             look comes from the blur, the rim and a fuller tint; the warp stays on the bar. */}
-        <div className="absolute top-0 left-0 z-0 h-full w-full rounded-full shadow-[0_0_6px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] transition-shadow dark:shadow-[0_0_8px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)] neu:hidden" />
-        <svg viewBox="0 0 24 24" className="pointer-events-none size-7 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+        <LiquidGlass style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+        {/* old inner shadow layer:
+        <div className="absolute top-0 left-0 z-0 h-full w-full rounded-full shadow-[0_0_6px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] transition-shadow dark:shadow-[0_0_8px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)] neu:hidden" /> */}
+        {/* `relative` lifts the icon above the glass layer */}
+        <svg viewBox="0 0 24 24" className="pointer-events-none relative size-7 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>
       </button>
