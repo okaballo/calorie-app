@@ -61,6 +61,7 @@ export default function Workout({
   const [routineDraft, setRoutineDraft] = useState(null)     // what Splits Suggestions hands a new routine
   const [splitsOpen, setSplitsOpen] = useState(false)
   const [programOpen, setProgramOpen] = useState(null)       // null | id of the program whose page is open
+  const [deletingProgram, setDeletingProgram] = useState(false)
   const [streakOpen, setStreakOpen] = useState(false)
   const [openId, setOpenId] = useState(null)                 // expanded history entry
   const [deleting, setDeleting] = useState(null)             // history entry awaiting confirmation
@@ -311,6 +312,23 @@ export default function Workout({
             <Card>
               <ul className={`divide-y ${divider}`}>{programRoutines.map(routineRow)}</ul>
             </Card>
+            <button onClick={() => setDeletingProgram(true)} className="w-full py-2 text-sm font-medium text-fat-deep dark:text-fat">
+              {t('Remove Program')}
+            </button>
+            {deletingProgram && (
+              <ConfirmDialog
+                destructive
+                title={t('Remove Program?')}
+                message={t('This deletes the program and all {n} of its routines.', { n: programRoutines.length })}
+                confirmLabel={t('Remove')}
+                onCancel={() => setDeletingProgram(false)}
+                onConfirm={() => {
+                  programRoutines.forEach((r) => onDeleteRoutine(r.id))
+                  setDeletingProgram(false)
+                  setProgramOpen(null)
+                }}
+              />
+            )}
           </Sheet>
         )}
         {session && (
