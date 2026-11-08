@@ -28,7 +28,7 @@ import { setLanguage, t } from './lib/i18n.js'
 import { EMPTY_WORKOUT, isEmptyWorkout, isLive } from './lib/workouts.js'
 import { setCustomExercises } from './lib/exercisesDB.ts'
 import { applyTheme } from './lib/theme.js'
-import { calorieStreak, workoutStreak, goalTypeFor, milestoneFor, DAY_MILESTONES, WEEK_MILESTONES } from './lib/streaks.js'
+import { calorieStreak, workoutStreak, goalTypeFor, milestoneFor, weekStart, DAY_MILESTONES, WEEK_MILESTONES } from './lib/streaks.js'
 import { StreakToast } from './components/Streaks.jsx'
 import { CustomExercisesContext } from './lib/customExercisesContext.js'
 import Home from './tabs/Home.jsx'
@@ -194,6 +194,14 @@ export default function App() {
     setViewDay((v) => (v === key ? null : v))
     setMeals((list) => list.filter((m) => mealDay(m) !== key))
     setCheatDays((list) => list.filter((d) => d !== key))
+  }
+  // Streak revive: one per week. The weeks a revive was used are kept on this device only.
+  const [reviveWeeks, setReviveWeeks] = useLocalStorage('mt.reviveWeeks', [])
+  const reviveUsed = reviveWeeks.includes(weekStart(activeDay.date))
+  const reviveDay = (key) => {
+    if (reviveUsed) return
+    setReviveWeeks((list) => [...list, weekStart(activeDay.date)].slice(-8))
+    setCheatDays((list) => (list.includes(key) ? list : [...list, key]))
   }
   const toggleCheatDay = (key) =>
     setCheatDays((list) => (list.includes(key) ? list.filter((d) => d !== key) : [...list, key]))
@@ -418,6 +426,7 @@ export default function App() {
         profile={profile} avatar={avatar} meals={meals} activeDay={activeDay}
         viewDay={shownDay} onViewDay={(key) => setViewDay(key === activeDay.date ? null : key)} cheatDays={cheatDays}
         streak={calStreak} statsEntered={statsEntered} onOpenPlan={() => setPlanOpen(true)}
+        onReviveDay={reviveDay} reviveUsed={reviveUsed}
         onAddMeal={() => setMealOpen(true)}
         onEditMeal={(meal) => setMealEditing(meal)}
         onStartNewDay={startNewDay}
@@ -430,7 +439,7 @@ export default function App() {
         }
       />
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [profile, avatar, meals, activeDay, shownDay, cheatDays, planProfile, calStreak, statsEntered, lang])
+  ), [profile, avatar, meals, activeDay, shownDay, cheatDays, planProfile, calStreak, statsEntered, reviveUsed, lang])
 
   // Logs to the same day Home is showing, so a forgotten workout can be
   // added by picking its date on Home first.

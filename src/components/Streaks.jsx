@@ -71,8 +71,8 @@ const Hero = ({ value, unit, best, bestUnit }) => (
   </div>
 )
 
-export function CalorieStreakSheet({ streak, calories, dayLetter, hint, onOpenPlan, onClose }) {
-  const { range, recent, today } = streak
+export function CalorieStreakSheet({ streak, calories, dayLetter, dayName, hint, onOpenPlan, onRevive, reviveUsed, onClose }) {
+  const { range, recent, today, revivable } = streak
   const limits = range && { min: range.min.toLocaleString(), max: range.max.toLocaleString() }
   const message = !range ? t('Set a calorie goal to start a streak.')
     : today === 'cheat' ? t('Cheat day: your streak is safe today.')
@@ -95,6 +95,15 @@ export function CalorieStreakSheet({ streak, calories, dayLetter, hint, onOpenPl
           </p>
         )}
         <p className={`text-center text-sm text-balance ${today === 'over' ? 'text-[#FF3547]' : muted}`}>{message}</p>
+        {revivable && (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <p className={`text-sm text-balance ${muted}`}>{t('You skipped {day} without logging anything. Revive it as a cheat day to keep your streak.', { day: dayName(revivable) })}</p>
+            <button type="button" disabled={reviveUsed} onClick={() => onRevive(revivable)} className={`min-h-10 rounded-full bg-streak px-5 text-[15px] font-semibold text-on-streak transition active:scale-95 disabled:opacity-40 ${focusRing}`}>
+              {t('Revive Streak')}
+            </button>
+            {reviveUsed && <p className={`text-xs ${muted}`}>{t('One revive per week. You can revive again next week.')}</p>}
+          </div>
+        )}
         {range && hint && (
           <div className="flex flex-col items-center gap-2 text-center">
             <p className={`text-xs text-balance ${muted}`}>{t('Add your age, height and weight in Plan & Goals for a more accurate range.')}</p>

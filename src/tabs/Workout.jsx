@@ -17,11 +17,12 @@ import { useEffect, useState } from 'react'
 import { fmt0, parseDay } from '../lib/calc.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import {
-  EMPTY_WORKOUT, byRecent, exerciseOf, isBodyweight, formatDuration, isLive, isLogged, routineVolume, setText, startEntries, toRoutine,
+  EMPTY_WORKOUT, byRecent, exerciseOf, isBodyweight, formatDuration, isLive, isLogged, newEntry, routineVolume, setText, startEntries, toRoutine,
   workoutStats,
 } from '../lib/workouts.js'
+import { splitDayExercises } from '../lib/exercisesDB.ts'
 import {
-  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, TrashIcon, EmptyState, ConfirmDialog, SheetPortal, muted, faint, accentText, buttonBg, divider,
+  Card, SectionTitle, PageTitle, PrimaryButton, PencilIcon, ChevronIcon, Sheet, TrashIcon, EmptyState, ConfirmDialog, SheetPortal, muted, faint, accentText, buttonBg, divider,
 } from '../components/ui.jsx'
 import { LineChart } from '../components/Charts.jsx'
 import OptionMenu from '../components/OptionMenu.jsx'
@@ -59,6 +60,7 @@ export default function Workout({
   const [routineEditing, setRoutineEditing] = useState(null) // null | 'new' | routine being edited
   const [routineDraft, setRoutineDraft] = useState(null)     // what Splits Suggestions hands a new routine
   const [splitsOpen, setSplitsOpen] = useState(false)
+  const [programOpen, setProgramOpen] = useState(null)       // null | id of the program whose page is open
   const [streakOpen, setStreakOpen] = useState(false)
   const [openId, setOpenId] = useState(null)                 // expanded history entry
   const [deleting, setDeleting] = useState(null)             // history entry awaiting confirmation
@@ -78,6 +80,36 @@ export default function Workout({
   }
 
   const finished = [...history].sort(byRecent).slice(0, 50)
+
+  // One routine row: its exercises, an edit pencil and Start. Used in the list and inside a program.
+  const routineRow = (routine) => {
+    const sets = routine.exercises.reduce((n, e) => n + e.sets.length, 0)
+    return (
+      <li key={routine.id} className="flex items-center gap-2 py-2.5">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{routine.name}</p>
+          <p className={`truncate text-xs ${faint}`}>{routine.exercises.map((e) => exerciseOf(e).name).join(' · ')}</p>
+          <p className={`text-xs tabular-nums ${muted}`}>
+            {t(routine.exercises.length === 1 ? '1 exercise' : '{n} exercises', { n: routine.exercises.length })} · {t(sets === 1 ? '1 set' : '{n} sets', { n: sets })}
+          </p>
+        </div>
+        <button
+          onClick={() => setRoutineEditing(routine)}
+          aria-label={t('Edit {name}', { name: routine.name })}
+          className={`p-1.5 transition active:scale-90 ${accentText}`}
+        >
+          <PencilIcon />
+        </button>
+        <button
+          onClick={() => start(routine)}
+          className="shrink-0 rounded-full bg-royal px-4 py-1.5 text-[13px] font-semibold text-on-accent shadow-[0_6px_16px_-8px_rgba(120,81,169,0.8)] transition neu:shadow-(--neu-raised-sm) active:scale-95"
+        >
+          {t('Start')}
+        </button>
+      </li>
+    )
+  }
+  const programRoutines = programOpen ? routines.filter((r) => r.program?.id === programOpen) : []
 
   // Volume chart: one routine at a time. The dropdown is the routines as they
   // are right now, so adding or deleting one updates it; if the remembered
@@ -152,29 +184,20 @@ export default function Workout({
           </EmptyState>
         ) : (
           <ul className={`divide-y ${divider}`}>
+            {/* A program (routines sharing `program.id`) is one row, at the place of its first routine. */}
             {routines.map((routine) => {
-              const sets = routine.exercises.reduce((n, e) => n + e.sets.length, 0)
+              if (!routine.program) return routineRow(routine)
+              const members = routines.filter((r) => r.program?.id === routine.program.id)
+              if (members[0] !== routine) return null
               return (
-                <li key={routine.id} className="flex items-center gap-2 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{routine.name}</p>
-                    <p className={`truncate text-xs ${faint}`}>{routine.exercises.map((e) => exerciseOf(e).name).join(' · ')}</p>
-                    <p className={`text-xs tabular-nums ${muted}`}>
-                      {t(routine.exercises.length === 1 ? '1 exercise' : '{n} exercises', { n: routine.exercises.length })} · {t(sets === 1 ? '1 set' : '{n} sets', { n: sets })}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setRoutineEditing(routine)}
-                    aria-label={t('Edit {name}', { name: routine.name })}
-                    className={`p-1.5 transition active:scale-90 ${accentText}`}
-                  >
-                    <PencilIcon />
-                  </button>
-                  <button
-                    onClick={() => start(routine)}
-                    className="shrink-0 rounded-full bg-royal px-4 py-1.5 text-[13px] font-semibold text-on-accent shadow-[0_6px_16px_-8px_rgba(120,81,169,0.8)] transition neu:shadow-(--neu-raised-sm) active:scale-95"
-                  >
-                    {t('Start')}
+                <li key={`program-${routine.program.id}`}>
+                  <button onClick={() => setProgramOpen(routine.program.id)} className="flex w-full items-center gap-2 py-2.5 text-start">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{routine.program.name}</p>
+                      <p className={`truncate text-xs ${faint}`}>{members.map((r) => r.name).join(' · ')}</p>
+                      <p className={`text-xs tabular-nums ${muted}`}>{t('{n} routines', { n: members.length })}</p>
+                    </div>
+                    <ChevronIcon className={`h-5 w-5 ${faint}`} />
                   </button>
                 </li>
               )
@@ -283,6 +306,13 @@ export default function Workout({
       )}
 
       <SheetPortal>
+        {programRoutines.length > 0 && (
+          <Sheet key="program" title={programRoutines[0].program.name} closeLabel="Close" onClose={() => setProgramOpen(null)}>
+            <Card>
+              <ul className={`divide-y ${divider}`}>{programRoutines.map(routineRow)}</ul>
+            </Card>
+          </Sheet>
+        )}
         {session && (
           <WorkoutSessionSheet
             key="session"
@@ -306,6 +336,16 @@ export default function Workout({
             onNext={(exercises, dayName) => {
               setRoutineDraft({ name: dayName ? t(dayName) : '', exercises })
               setRoutineEditing('new')
+              setSplitsOpen(false)
+            }}
+            // A whole program: one routine per day, tagged with the program so the list shows them as one row.
+            // Saved last-to-first because a new routine goes to the top.
+            onAddProgram={(split) => {
+              const program = { id: crypto.randomUUID(), name: t(split.name) };
+              [...split.days].reverse().forEach((day) => onSaveRoutine({
+                ...toRoutine(t(day.name), splitDayExercises(day).map((ex) => newEntry(ex, [], bodyWeight))),
+                program,
+              }))
               setSplitsOpen(false)
             }}
             onClose={() => setSplitsOpen(false)}

@@ -2,13 +2,14 @@
 // Pull / Legs, Upper / Lower, ...), each day with a short list of staple
 // exercises. "Add all" picks a whole day; the + beside an exercise picks just
 // that one, and its tick takes it back. Next hands the picks to a new routine,
-// named after the first day added in full.
+// named after the first day added in full. "Add Program" at the end of a split
+// saves every day of it as its own routine straight away.
 import { useState } from 'react'
 import { SPLITS, splitDayExercises } from '../lib/exercisesDB.ts'
 import { Sheet, AddButton, Card, CheckIcon, muted, faint, accentText, divider } from './ui.jsx'
 import { t } from '../lib/i18n.js'
 
-export default function SplitsSheet({ onNext, onClose }) {
+export default function SplitsSheet({ onNext, onAddProgram, onClose }) {
   const [picked, setPicked] = useState([]) // exercises, in tap order
   const [dayName, setDayName] = useState(null)
 
@@ -78,6 +79,12 @@ export default function SplitsSheet({ onNext, onClose }) {
               </div>
             )
           })}
+          <button
+            onClick={() => onAddProgram(split)}
+            className={`w-full rounded-full py-2.5 text-[15px] font-semibold bg-royal/10 transition active:scale-[0.98] dark:bg-royal/25 ${accentText}`}
+          >
+            {t('Add Program')}
+          </button>
         </Card>
       ))}
     </Sheet>

@@ -30,7 +30,8 @@ export default function RoutineSheet({ routine, draft = null, bodyWeight = 0, on
   const tags = supersetTags(entries)
 
   const save = () => {
-    onSave(toRoutine(name.trim(), entries, routine?.id))
+    // toRoutine only copies the basics, so keep the program the routine belongs to.
+    onSave({ ...toRoutine(name.trim(), entries, routine?.id), ...(routine?.program && { program: routine.program }) })
     onClose()
   }
 

@@ -328,7 +328,7 @@ export function GlassSwitch({ value, onChange, left, right, label }) {
         style={{ x, scaleX, scaleY, width: SW.KW, height: SW.KH, top: (SW.H - SW.KH) / 2 }}
       >
         <motion.div
-          className="absolute inset-0 -z-20 rounded-[14px] bg-white/70 shadow-[0_4px_9px_-3px_rgba(0,0,0,0.3)] backdrop-blur-[3px] dark:bg-white/12 dark:shadow-[0_4px_9px_-2px_rgba(0,0,0,0.8)] neu:bg-canvas neu:shadow-(--neu-raised-sm) neu:backdrop-blur-none"
+          className="absolute inset-0 -z-20 rounded-[14px] bg-white/70 shadow-[0_4px_9px_-3px_rgba(0,0,0,0.3)] dark:bg-white/12 dark:shadow-[0_4px_9px_-2px_rgba(0,0,0,0.8)] neu:bg-canvas neu:shadow-(--neu-raised-sm)"
           style={{ opacity: knobTint }}
         />
         <div className={`absolute inset-0 rounded-[14px] neu:hidden ${glassRim}`} />
@@ -744,8 +744,11 @@ export function Sheet({ title, onClose, action, children, z = 'z-40', closeLabel
  * panel. data-no-swipe keeps drags in the sheet from switching tabs. Children
  * are keyed sheets or nothing.
  */
+// Touches are also kept from bubbling (through React) to the pager's drag handler: a sheet that
+// closes mid-touch removed the element that handler was waiting on, leaving the page's scroll stuck.
+const keepHere = (e) => e.stopPropagation()
 export const SheetPortal = ({ children }) => createPortal(
-  <div data-no-swipe><AnimatePresence>{children}</AnimatePresence></div>,
+  <div data-no-swipe onPointerDown={keepHere} onTouchStart={keepHere}><AnimatePresence>{children}</AnimatePresence></div>,
   document.body,
 )
 

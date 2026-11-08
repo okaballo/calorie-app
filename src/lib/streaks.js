@@ -51,13 +51,14 @@ export const milestoneFor = (value, list) => list.reduce((best, m) => (value >= 
  *   best: number,
  *   today: 'ok'|'low'|'over'|'cheat',
  *   hitDays: Set<string>, closed days that were hits
+ *   revivable: string|null, a recent empty day that can be frozen with a cheat day
  *   recent: {key:string,status:'hit'|'miss'|'cheat'|'today'|'none'}[]  last 7 days up to today
  * }}
  */
 export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
   const range = calorieRange(goal, goalType)
   const hitDays = new Set()
-  const out = { range, confirmed: 0, current: 0, best: 0, today: 'low', hitDays, recent: [] }
+  const out = { range, confirmed: 0, current: 0, best: 0, today: 'low', hitDays, recent: [], revivable: null }
   if (!range) return out
 
   const byDay = dayTotals(meals)
@@ -70,12 +71,17 @@ export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
   let first = null
   for (const key of Object.keys(byDay)) if (key < activeDate && (!first || key < first)) first = key
 
+  // Revive: the latest day in the last week with nothing logged. Marking it a cheat day (a freeze) keeps the streak.
+  const weekAgo = addDays(activeDate, -6)
   let run = 0
   if (first) {
     for (let key = first; key < activeDate; key = addDays(key, 1)) {
       const s = statusOf(key)
       if (s === 'hit') { run += 1; hitDays.add(key); out.best = Math.max(out.best, run) }
-      else if (s === 'miss') run = 0
+      else if (s === 'miss') {
+        run = 0
+        if (!byDay[key] && key >= weekAgo) out.revivable = key
+      }
     }
   }
   out.confirmed = run

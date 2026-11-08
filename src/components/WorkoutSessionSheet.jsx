@@ -94,7 +94,7 @@ export default function WorkoutSessionSheet({
 
   const save = () => {
     if (!source) return setNaming(true)
-    onSaveRoutine(toRoutine(source.name, workout.exercises, source.id))
+    onSaveRoutine({ ...toRoutine(source.name, workout.exercises, source.id), ...(source.program && { program: source.program }) })
     flash()
   }
   // No source routine: save a new one and make it this workout's source.

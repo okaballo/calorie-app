@@ -191,7 +191,7 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, onViewDay }
 }
 
 export default function Home({
-  profile, avatar, meals, activeDay, viewDay, onViewDay, cheatDays = [], streak,
+  profile, avatar, meals, activeDay, viewDay, onViewDay, cheatDays = [], streak, onReviveDay, reviveUsed,
   onAddMeal, onEditMeal, onDeleteMeal, onStartNewDay, onSaveTemplate, onOpenProfile, analytics, statsEntered, onOpenPlan,
 }) {
   const rowMotion = useRowMotion()
@@ -242,7 +242,9 @@ export default function Home({
           <CalorieStreakSheet
             streak={streak} calories={streak.todayKcal} hint={!statsEntered}
             onOpenPlan={() => { setStreakOpen(false); onOpenPlan() }}
+            onRevive={onReviveDay} reviveUsed={reviveUsed}
             dayLetter={(key) => dateFormat(locale(), { weekday: 'narrow' }).format(parseDay(key))}
+            dayName={(key) => dateFormat(locale(), { weekday: 'long' }).format(parseDay(key))}
             onClose={() => setStreakOpen(false)}
           />
         )}

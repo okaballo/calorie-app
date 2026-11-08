@@ -121,6 +121,18 @@ test('a cheat day neither breaks the calorie streak nor adds to it', () => {
   assert.equal(streak.hitDays.has('2026-06-15'), false)
 })
 
+test('a recent empty day can be revived with a cheat day, a logged miss cannot', () => {
+  const skipped = [meal('2026-06-14', 2000), meal('2026-06-16', 2000)] // nothing on the 15th
+  const a = calorieStreak(skipped, '2026-06-17', [], 2000, 'Maintain')
+  assert.equal(a.revivable, '2026-06-15')
+  const b = calorieStreak(skipped, '2026-06-17', ['2026-06-15'], 2000, 'Maintain')
+  assert.equal(b.revivable, null)
+  assert.equal(b.confirmed, 2)
+  const over = calorieStreak([meal('2026-06-14', 2000), meal('2026-06-15', 5000)], '2026-06-17', [], 2000, 'Maintain')
+  assert.equal(over.revivable, '2026-06-16') // the 16th is empty; the over-limit 15th has meals
+  assert.equal(calorieStreak([meal('2026-06-14', 5000)], '2026-06-15', [], 2000, 'Maintain').revivable, null)
+})
+
 test('no calorie goal means no streak', () => {
   const streak = calorieStreak([meal('2026-06-16', 2000)], '2026-06-17', [], 0, 'Maintain')
   assert.equal(streak.range, null)
