@@ -2,7 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { dayKey, divideBatch, mealTotals, nextTrackingDay, num, parseDay, periodStats, startOfWeek, tdee } from '../src/lib/calc.js'
-import { calorieRange, calorieStreak, goalTypeFor, milestoneFor, weekStart, workoutStreak } from '../src/lib/streaks.js'
+import { musclesOn } from '../src/lib/workouts.js'
+import { calorieRange, calorieStreak, goalTypeFor, honouredCheatDays, milestoneFor, weekStart, workoutStreak } from '../src/lib/streaks.js'
 
 // Weeks start on the device's first weekday: fix it to Monday, so results do not depend on this machine.
 Object.defineProperty(globalThis, 'navigator', { value: { language: 'en-GB' }, configurable: true })
@@ -121,6 +122,19 @@ test('a cheat day neither breaks the calorie streak nor adds to it', () => {
   assert.equal(streak.hitDays.has('2026-06-15'), false)
 })
 
+test('a cheat day sooner than 7 days after the last one breaks the streak', () => {
+  assert.deepEqual([...honouredCheatDays(['2026-06-08', '2026-06-01', '2026-06-05', '2026-06-15'])], ['2026-06-01', '2026-06-08', '2026-06-15'])
+  const meals = [meal('2026-06-10', 2000), meal('2026-06-11', 5000), meal('2026-06-12', 2000), meal('2026-06-13', 5000), meal('2026-06-14', 2000)]
+  const tooSoon = calorieStreak(meals, '2026-06-15', ['2026-06-11', '2026-06-13'], 2000, 'Maintain')
+  assert.equal(tooSoon.confirmed, 1) // the 13th is only 2 days after the 11th: a miss
+  const spaced = calorieStreak(meals, '2026-06-15', ['2026-06-04', '2026-06-11'], 2000, 'Maintain')
+  assert.equal(spaced.recent.find((d) => d.key === '2026-06-11').status, 'cheat')
+  // a revive too close to an earlier cheat day would not freeze anything, so it is not offered
+  const gap = [meal('2026-06-12', 2000), meal('2026-06-14', 2000)]
+  assert.equal(calorieStreak(gap, '2026-06-15', ['2026-06-10'], 2000, 'Maintain').revivable, null)
+  assert.equal(calorieStreak(gap, '2026-06-15', ['2026-06-06'], 2000, 'Maintain').revivable, '2026-06-13')
+})
+
 test('a recent empty day can be revived with a cheat day, a logged miss cannot', () => {
   const skipped = [meal('2026-06-14', 2000), meal('2026-06-16', 2000)] // nothing on the 15th
   const a = calorieStreak(skipped, '2026-06-17', [], 2000, 'Maintain')
@@ -160,4 +174,26 @@ test('a week with too few workouts breaks the workout streak', () => {
 test('milestoneFor picks the biggest one reached', () => {
   assert.equal(milestoneFor(6, [7, 14]), 0)
   assert.equal(milestoneFor(14, [7, 14, 30]), 14)
+})
+
+test('musclesOn counts exercises, logged sets and the last day per muscle', () => {
+  const history = [
+    { id: 'a', day: '2026-06-15', exercises: [
+      { id: '1', exerciseId: 'deadlift', sets: [{ reps: 5, kg: 100 }, { reps: 5, kg: 100 }, { reps: '' }] }, // primary Back
+      { id: '2', exerciseId: 'barbell-row', sets: [{ reps: 8 }] },
+      { id: '3', exerciseId: 'gone', name: 'Old', sets: [{ reps: 8 }] },                                // unknown: skipped
+    ] },
+    { id: 'b', day: '2026-06-16', exercises: [{ id: '4', exerciseId: 'deadlift', sets: [{ reps: 5 }] }] },
+  ]
+  const day = musclesOn(history.slice(0, 1))
+  assert.equal(day.Back.exercises, 2)
+  assert.equal(day.Back.sets, 3)
+  assert.equal(day.Back.primary, true)
+  assert.equal(day.Back.items[0].text, '100 × 5, 100 × 5')
+  assert.equal(day.Hamstrings.primary, false)
+  assert.equal(day.Chest, undefined)
+  const all = musclesOn(history)
+  assert.equal(all.Back.sets, 4)
+  assert.equal(all.Back.last, '2026-06-16')
+  assert.deepEqual(musclesOn([]), {})
 })

@@ -17,13 +17,14 @@ import {
 import { BarChart } from './Charts.jsx'
 import OptionMenu from './OptionMenu.jsx'
 import { t, locale } from '../lib/i18n.js'
+import { honouredCheatDays } from '../lib/streaks.js'
 
 const mealCount = (n) => (n === 1 ? t('1 meal') : t('{n} meals', { n }))
 const longDate = (key) =>
   parseDay(key).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })
 
 /** Totals for the selected day, a cheat day toggle, and Delete Day with a confirmation. */
-function DayDetails({ dayKey, meals, activeDay, cheat, onToggleCheat, onDeleteDay, onClose }) {
+function DayDetails({ dayKey, meals, activeDay, cheat, honoured, onToggleCheat, onDeleteDay, onClose }) {
   const [confirming, setConfirming] = useState(false)
   const dayMeals = meals.filter((m) => mealDay(m) === dayKey)
   const totals = dayMeals.reduce((sum, m) => add(sum, mealTotals(m)), ZERO)
@@ -83,6 +84,9 @@ function DayDetails({ dayKey, meals, activeDay, cheat, onToggleCheat, onDeleteDa
       >
         {t(cheat ? 'Unmark Cheat Day' : 'Mark as Cheat Day')}
       </button>
+      {cheat && !honoured && (
+        <p className={`text-xs ${faint}`}>{t('Less than 7 days after your last cheat day, so this one does not protect your streak.')}</p>
+      )}
 
       {canDelete && (
         <button
@@ -156,7 +160,7 @@ export default function Analytics({ profile, meals, activeDay, onDeleteDay, chea
         <DayDetails
           key={selectedKey}
           dayKey={selectedKey} meals={meals} activeDay={activeDay}
-          cheat={cheatDays.includes(selectedKey)} onToggleCheat={() => onToggleCheatDay(selectedKey)}
+          cheat={cheatDays.includes(selectedKey)} honoured={honouredCheatDays(cheatDays).has(selectedKey)} onToggleCheat={() => onToggleCheatDay(selectedKey)}
           onDeleteDay={onDeleteDay} onClose={() => setSelected(null)}
         />
       )}

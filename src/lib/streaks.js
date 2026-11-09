@@ -7,7 +7,9 @@
 // day with (almost) nothing logged from counting. Tracking days are labels that
 // only change when the user taps Start New Day, so the streak continues only when
 // each label is the very next calendar date; a skipped date breaks it.
-// A cheat day neither breaks the streak nor adds to it (a freeze).
+// A cheat day neither breaks the streak nor adds to it (a freeze), but only when it
+// is at least 7 days after the previous honoured one; a cheat day sooner than that
+// is judged like any other day, so a real cheat breaks the streak.
 // The day in progress never breaks the streak: it only adds one while its total
 // is inside the range, and counts for good once the day is closed.
 //
@@ -25,6 +27,20 @@ const addDays = (key, n) => {
   const d = parseDay(key)
   d.setDate(d.getDate() + n)
   return dayKey(d)
+}
+
+export const CHEAT_GAP = 7
+
+/** The cheat days that count as freezes: oldest first, each at least CHEAT_GAP days after the previous kept one. */
+export const honouredCheatDays = (cheatDays) => {
+  const kept = new Set()
+  let next = ''
+  for (const key of [...cheatDays].sort()) {
+    if (key < next) continue
+    kept.add(key)
+    next = addDays(key, CHEAT_GAP)
+  }
+  return kept
 }
 
 /** The kcal range that keeps a day alive: { min, max } (rounded), or null with no goal. */
@@ -62,8 +78,9 @@ export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
   if (!range) return out
 
   const byDay = dayTotals(meals)
+  const cheats = honouredCheatDays(cheatDays)
   const statusOf = (key) => {
-    if (cheatDays.includes(key)) return 'cheat'
+    if (cheats.has(key)) return 'cheat'
     const kcal = byDay[key]?.calories ?? 0
     return kcal >= range.min && kcal <= range.max ? 'hit' : 'miss'
   }
@@ -71,8 +88,10 @@ export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
   let first = null
   for (const key of Object.keys(byDay)) if (key < activeDate && (!first || key < first)) first = key
 
-  // Revive: the latest day in the last week with nothing logged. Marking it a cheat day (a freeze) keeps the streak.
+  // Revive: the latest day in the last week with nothing logged. Marking it a cheat day (a freeze) keeps the streak,
+  // so it is only offered when no honoured cheat day is within CHEAT_GAP days of it.
   const weekAgo = addDays(activeDate, -6)
+  const spaced = (key) => ![...cheats].some((c) => c > addDays(key, -CHEAT_GAP) && c < addDays(key, CHEAT_GAP))
   let run = 0
   if (first) {
     for (let key = first; key < activeDate; key = addDays(key, 1)) {
@@ -80,7 +99,7 @@ export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
       if (s === 'hit') { run += 1; hitDays.add(key); out.best = Math.max(out.best, run) }
       else if (s === 'miss') {
         run = 0
-        if (!byDay[key] && key >= weekAgo) out.revivable = key
+        if (!byDay[key] && key >= weekAgo) out.revivable = spaced(key) ? key : null
       }
     }
   }
@@ -88,7 +107,7 @@ export const calorieStreak = (meals, activeDate, cheatDays, goal, goalType) => {
 
   const kcal = byDay[activeDate]?.calories ?? 0
   out.todayKcal = kcal
-  out.today = cheatDays.includes(activeDate) ? 'cheat' : kcal > range.max ? 'over' : kcal >= range.min ? 'ok' : 'low'
+  out.today = cheats.has(activeDate) ? 'cheat' : kcal > range.max ? 'over' : kcal >= range.min ? 'ok' : 'low'
   out.current = run + (out.today === 'ok' ? 1 : 0)
   out.best = Math.max(out.best, out.current)
 

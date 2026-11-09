@@ -13,6 +13,7 @@
 //   Add New Routine / pencil   RoutineSheet: build or edit a routine
 //   Splits Suggestions         SplitsSheet: pick exercises for a new routine
 //   Start / Continue Routine   WorkoutSessionSheet: log the sets
+//   Body icon (History card)   BodyGraphSheet: muscles trained per day
 import { useEffect, useState } from 'react'
 import { fmt0, parseDay } from '../lib/calc.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
@@ -29,6 +30,7 @@ import OptionMenu from '../components/OptionMenu.jsx'
 import WorkoutSessionSheet, { WorkoutStatsRow } from '../components/WorkoutSessionSheet.jsx'
 import RoutineSheet from '../components/RoutineSheet.jsx'
 import SplitsSheet from '../components/SplitsSheet.jsx'
+import BodyGraphSheet from '../components/BodyGraphSheet.jsx'
 import { t, locale } from '../lib/i18n.js'
 import { StreakChip, WorkoutStreakSheet } from '../components/Streaks.jsx'
 
@@ -63,6 +65,7 @@ export default function Workout({
   const [programOpen, setProgramOpen] = useState(null)       // null | id of the program whose page is open
   const [deletingProgram, setDeletingProgram] = useState(false)
   const [streakOpen, setStreakOpen] = useState(false)
+  const [bodyOpen, setBodyOpen] = useState(false)
   const [openId, setOpenId] = useState(null)                 // expanded history entry
   const [deleting, setDeleting] = useState(null)             // history entry awaiting confirmation
 
@@ -243,7 +246,18 @@ export default function Workout({
       {/* ---- History of finished workouts ---- */}
       {finished.length > 0 && (
         <Card className="space-y-2">
-          <SectionTitle>{t('Workout History')}</SectionTitle>
+          <div className="flex items-center justify-between gap-3">
+            <SectionTitle>{t('Workout History')}</SectionTitle>
+            <button
+              onClick={() => setBodyOpen(true)}
+              aria-label={t('Body Graph')}
+              className={`-m-1 rounded-full p-2 transition active:scale-90 ${buttonBg} ${accentText}`}
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="4.5" r="2" /><path d="M5 9l7 1 7-1M12 10v5m0 0-3 6m3-6 3 6" />
+              </svg>
+            </button>
+          </div>
           <ul className={`divide-y ${divider}`}>
             {finished.map((h) => {
               const s = workoutStats(h)
@@ -347,6 +361,9 @@ export default function Workout({
             onSave={onSaveRoutine} onDelete={onDeleteRoutine}
             onClose={() => { setRoutineEditing(null); setRoutineDraft(null) }}
           />
+        )}
+        {bodyOpen && (
+          <BodyGraphSheet key="body" history={history} day={day} activeDate={activeDate} onClose={() => setBodyOpen(false)} />
         )}
         {splitsOpen && (
           <SplitsSheet

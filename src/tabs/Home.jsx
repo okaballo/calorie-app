@@ -17,11 +17,12 @@ import { StreakChip, CalorieStreakSheet, StreakIcon } from '../components/Streak
  * week. A day with meals gets a check; a cheat day has a red letter (the cheat
  * colour from Analytics); the current (active) tracking day has a bold accent
  * letter so it is easy to find again. Days after the current day are disabled.
+ * The body graph reuses it: `marked` (a Set of day keys) then decides the checks instead of meals.
  */
 // Week strip motion: soft on purpose, gentler than the app's sheet SPRING.
 const SOFT = { type: 'spring', stiffness: 260, damping: 32, restDelta: 0.5, restSpeed: 10 }
 
-function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, onViewDay }) {
+export function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, marked, onViewDay }) {
   const ref = useRef(null)
   const drag = useRef(null)     // { x, y, id, horizontal, base, dx0, hist } while a finger is down
   const anim = useRef(null)     // the spring currently moving the track
@@ -137,7 +138,7 @@ function WeekStrip({ viewDay, activeDate, meals, cheatDays, hitDays, onViewDay }
         const future = key > activeDate
         const selected = key === viewDay
         const current = key === activeDate
-        const logged = totals.calories > 0
+        const logged = marked ? marked.has(key) : totals.calories > 0
         const cheat = cheatDays.includes(key)
         const letter = cheat ? 'text-[#FF3547]' : current ? accentText : selected ? '' : muted
         return (

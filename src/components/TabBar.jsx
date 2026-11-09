@@ -240,16 +240,18 @@ export default memo(function TabBar({ navIndex, onTab, onAdd, lang }) {
           </motion.div>
 
           {/* Glass lens over the icons: rim highlights plus a faint
-              blue / pink fringe, like light bending at the edge. */}
+              blue / pink fringe, like light bending at the edge.
+              The fade goes through --lg-opacity onto the glass layer itself: `opacity` < 1 on this
+              wrapper would make it a backdrop root, and the glass would then see nothing to bend. */}
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-0 rounded-full"
-            style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, opacity: press }}
+            style={{ width: slotW, x: lensCenterX, scaleX: lensStretchX, scaleY: lensSquashY, '--lg-opacity': press }}
           >
             {/* <div className={`absolute inset-0 rounded-full bg-white/5 neu:bg-transparent neu:shadow-(--neu-inset) ${glassRim}`} />
             <div className="absolute inset-0 rounded-full shadow-[inset_2px_0_3px_-1px_rgba(120,170,255,0.55),inset_-2px_0_3px_-1px_rgba(237,133,217,0.5)] neu:hidden" /> */}
             {/* <LiquidGlass style={{ position: 'absolute', inset: 0, '--lg-tint': 'transparent' }} /> */}
-            <LiquidGlass className="liquid-glass--lens" style={{ position: 'absolute', inset: 0 }} />
+            <LiquidGlass bendX scale={16} edge={[5, 8]} className="liquid-glass--lens" style={{ position: 'absolute', inset: 0 }} />
           </motion.div>
         </div>
       </motion.div>

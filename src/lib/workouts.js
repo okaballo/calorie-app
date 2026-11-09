@@ -283,3 +283,30 @@ export const formatDuration = (ms) => {
 }
 
 export const isEmptyWorkout = (workout) => !workout || (workout.exercises.length === 0 && !workout.name.trim())
+
+/**
+ * Muscles worked by a list of finished workouts: muscle -> { exercises, sets, primary, last, items }.
+ * An exercise counts for its primary and its secondary muscles; `primary` is true when at least
+ * one exercise had it as the main muscle; `last` is the latest day it was worked; `items` are the
+ * exercises ({ id, name, text }) with their logged sets. Only logged sets count.
+ */
+export const musclesOn = (workouts) => {
+  const out = {}
+  for (const w of workouts) {
+    for (const e of w.exercises) {
+      const ex = exerciseOf(e)
+      if (!ex.muscle) continue
+      const logged = e.sets.filter(isLogged)
+      const text = logged.map((s) => setText(s, isBodyweight(ex))).join(', ')
+      for (const m of [ex.muscle, ...ex.secondary]) {
+        const s = (out[m] ??= { exercises: 0, sets: 0, primary: false, last: '', items: [] })
+        s.exercises += 1
+        s.sets += logged.length
+        if (m === ex.muscle) s.primary = true
+        if (w.day > s.last) s.last = w.day
+        s.items.push({ id: `${w.id}-${e.id}`, name: ex.name, text })
+      }
+    }
+  }
+  return out
+}
